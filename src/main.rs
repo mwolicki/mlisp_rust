@@ -12,6 +12,77 @@ enum ParseResult<'a, T> {
     Fail(&'a str, &'a [char]),
 }
 
+
+#[derive(Clone, Copy)]
+struct CharParser(char);
+
+impl<'a> Parser<'a> for CharParser {
+    type Return = char;
+    fn parse(&self, txt: &'a [char]) -> ParseResult<'a, char> {
+        if !txt.is_empty() && txt[0] == self.0 {
+            ParseResult::Ok(Corr {
+                txt: &txt[1..],
+                res: self.0,
+            })
+        } else {
+            ParseResult::Fail("no char", txt)
+        }
+    }
+}
+
+#[derive(Clone, Copy)]
+struct StringParser<'a> {
+    txt: &'a str,
+}
+
+fn parse_string<'a>(s: &'a str) -> StringParser<'a> {
+    StringParser { txt: s }
+}
+
+impl<'a> Parser<'a> for StringParser<'a> {
+    type Return = &'a str;
+    fn parse(&self, txt: &'a [char]) -> ParseResult<'a, &'a str> {
+        let s: Vec<char> = self.txt.chars().collect();
+        if txt.starts_with(&s) {
+            let corr = Corr {
+                txt: &txt[s.len()..],
+                res: self.txt,
+            };
+            ParseResult::Ok(corr)
+        } else {
+            ParseResult::Fail("no char", txt)
+        }
+    }
+}
+
+
+#[derive(Clone, Copy)]
+struct LambdaParser<'a, Out, T>
+where
+    T: Fn(&'a [char]) -> ParseResult<'a, Out>,
+{
+    f: T,
+    phantom: PhantomData<(&'a i8, Out)>,
+}
+
+impl<'a, Out, T> Parser<'a> for LambdaParser<'a, Out, T>
+where
+    T: Fn(&'a [char]) -> ParseResult<'a, Out>,
+    T: Copy,
+    Out: std::marker::Sized,
+    Out: Copy,
+{
+    type Return = Out;
+    fn parse(&self, txt: &'a [char]) -> ParseResult<'a, Out> {
+        let f = self.f;
+        f(txt)
+    }
+}
+
+fn parse_char(ch: char) -> CharParser {
+    CharParser(ch)
+}
+
 #[derive(Clone, Copy)]
 struct BothParser<'a, A, B>
 where
@@ -83,8 +154,6 @@ where
     }
 }
 
-
-
 #[derive(Clone, Copy)]
 struct RightParser<'a, A, B>
 where
@@ -129,7 +198,6 @@ where
     phantom: PhantomData<&'a PhantomData<P>>,
 }
 
-
 impl<'a, P, Ret> Parser<'a> for AllParser<'a, P>
 where
     P: Parser<'a, Return = Ret>,
@@ -140,22 +208,73 @@ where
     fn parse(&self, txt: &'a [char]) -> ParseResult<'a, Self::Return> {
         let mut res = Vec::new();
         let mut txt = txt;
-        loop {
-            if let ParseResult::Ok(corr) = self.parser.parse(txt) {
-                res.push(corr.res);
-                txt = corr.txt;
-            } else {
-                break;
-            }
+        while let ParseResult::Ok(corr) = self.parser.parse(txt) {
+            res.push(corr.res);
+            txt = corr.txt;
         }
 
-        if res.len() > 0 {
-            ParseResult::Ok(Corr { res, txt })
+        if res.is_empty() {
+            ParseResult::Fail("all: no matches", txt)
         } else {
-            ParseResult::Fail("no matches", txt)
+            ParseResult::Ok(Corr { res, txt })
         }
     }
 }
+
+#[derive(Clone, Copy)]
+struct AnyParser<'a, P>
+where
+    P: Parser<'a> + 'a,
+{
+    parsers: &'a [P],
+}
+
+impl<'a, P, Ret> Parser<'a> for AnyParser<'a, P>
+where
+    P: Parser<'a, Return = Ret>,
+    Ret: 'a,
+    P: Copy,
+{
+    type Return = Ret;
+    fn parse(&self, txt: &'a [char]) -> ParseResult<'a, Self::Return> {
+        for p in self.parsers {
+            if let ParseResult::Ok(corr) = p.parse(txt) {
+                return ParseResult::Ok(corr);
+            }
+        }
+
+        ParseResult::Fail("any: no matches", txt)
+    }
+}
+
+fn any<'a, P>(parsers: &'a [P]) -> AnyParser<'a, P>
+where
+    P: Parser<'a> + 'a,
+{
+    AnyParser { parsers }
+}
+
+
+fn p_string<'a>() -> AllParser<'a, AnyParser<'a, CharParser>> {
+    static mut PARSERS: Option<Vec<CharParser>> = None;
+    let p = unsafe {
+        if let None = PARSERS {
+            let chars = (('0' as u8)..('z' as u8))
+                .map(|x| parse_char(x as char))
+                .collect::<Vec<CharParser>>();
+
+            PARSERS = Some(chars);
+        }
+        if let Some(ref parser) = PARSERS {
+            any(parser)
+        } else {
+            panic!("blah")
+        }
+    };
+    p.all()
+
+}
+
 
 
 trait Parser<'a>
@@ -210,39 +329,19 @@ where
     }
 }
 
-#[derive(Clone, Copy)]
-struct CharParser(char);
-
-impl<'a> Parser<'a> for CharParser {
-    type Return = char;
-    fn parse(&self, txt: &'a [char]) -> ParseResult<'a, char> {
-        if txt.len() > 0 && txt[0] == self.0 {
-            ParseResult::Ok(Corr {
-                txt: &txt[1..],
-                res: self.0,
-            })
-        } else {
-            ParseResult::Fail("no char", txt)
-        }
-    }
-}
-
-fn parse_char<'a>(ch: char) -> CharParser {
-    CharParser(ch)
-}
-
 
 fn main() {
+
+
     let x = "abcddefg";
     let c: Vec<char> = x.chars().collect();
 
-
     let p = parse_char('a').both(parse_char('b')).left(parse_char('c'));
 
-
-
-    println!("->: {:?}", p.parse(&c));
-    println!("->: {:?}", p.right(parse_char('d')).parse(&c));
-    println!("->: {:?}", p.right(parse_char('d').all()).parse(&c));
-    println!("->: {:?}", parse_char('d').parse(&c));
+    println!("1->: {:?}", p.parse(&c));
+    println!("2->: {:?}", p.right(parse_char('d')).parse(&c));
+    println!("3->: {:?}", p.right(parse_char('d').all()).parse(&c));
+    println!("4->: {:?}", parse_char('d').parse(&c));
+    println!("5->: {:?}", parse_string("abc").parse(&c));
+    println!("6->: {:?}", parse_string("abc").right(p_string()).parse(&c));
 }
