@@ -11,11 +11,11 @@ pub enum Expr<'a> {
 
 
 pub fn parse() -> Expr<'static> {
-    let mut expr = refl_parser();
+    // let mut expr = refl_parser();
 
-    let exprImpl = vec![parse_char('x').map(|_| Expr::EInt(1))];
-    let x = any(&exprImpl);
-    expr.set(x);
+    // let exprImpl = vec![parse_char('x').map(|_| Expr::EInt(1))];
+    // let x = any(&exprImpl);
+    // expr.set(x);
 
     Expr::EInt(1)
 
