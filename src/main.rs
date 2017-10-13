@@ -22,5 +22,11 @@ fn main() {
     println!("5->: {:?}", parse_string("abcddefg").parse(&c));
     println!("6->: {:?}", parse_string("abc").right(p_string()).parse(&c));
     println!("7->: {:?}", p3.parse(&c).map(|_| 1));
-    println!("8->: {:?}", parser::parse(&s("( +            1    1 2)")));
+    println!(
+        "8->: {:?}",
+        parser::parse(&s(
+            "( +           
+                 (add 1 2 3)    1 2 (/ 1 2 3)    1 2)",
+        ))
+    );
 }
