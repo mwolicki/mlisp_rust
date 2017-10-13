@@ -314,7 +314,6 @@ pub fn p_int<'a>() -> RcParser<'a, i64> {
 pub type RcParser<'a, R> = Rc<Parser<'a, Return = R> + 'a>;
 
 
-#[derive(Clone, Copy)]
 pub struct LambdaParser<'a, Out, T>
 where
     T: Fn(&'a [char]) -> ParseResult<'a, Out>,
