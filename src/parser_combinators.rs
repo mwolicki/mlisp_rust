@@ -294,7 +294,7 @@ where
 }
 
 pub fn p_string<'a>() -> RcParser<'a, String> {
-    let chars = (('0' as u8)..('z' as u8) + 1)
+    let chars = (('!' as u8)..('~' as u8) + 1)
         .map(|x| parse_char(x as char).as_rc())
         .collect::<Vec<_>>();
 
