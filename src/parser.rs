@@ -15,9 +15,7 @@ pub fn parse<'a>(txt: &'a [char]) -> ParseResult<Expr<'a>> {
     let expr = refl_parser(|expr| {
         let expr_impl = vec![
             p_int().map(|x| Expr::EInt(x)),
-            parse_char('(').right(expr.map(|_| Expr::EInt(2))).left(
-                parse_char(')')
-            ),
+            parse_char('(').right(expr).left(parse_char(')')),
         ];
 
         any(expr_impl)

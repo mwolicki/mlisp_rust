@@ -6,7 +6,7 @@ use parser_combinators::*;
 fn main() {
 
 
-    let x = "abcddefg";
+    let x = "abcddefg0";
     let c: Vec<char> = x.chars().collect();
 
     let p = parse_char('a').both(parse_char('b')).left(parse_char('c'));
@@ -17,13 +17,13 @@ fn main() {
     println!("2->: {:?}", p.right(parse_char('d')).parse(&c));
     println!("3->: {:?}", p2.right(parse_char('d').all()).parse(&c));
     println!("4->: {:?}", parse_char('d').parse(&c));
-    println!("5->: {:?}", parse_string("abc").parse(&c));
+    println!("5->: {:?}", parse_string("abcddefg").parse(&c));
     println!("6->: {:?}", parse_string("abc").right(p_string()).parse(&c));
     println!("7->: {:?}", p3.parse(&c).map(|_| 1));
     println!(
         "7->: {:?}",
-        parser::parse(&("(99)yz".chars().collect::<Vec<char>>()))
+        parser::parse(&("(01234567890)yz".chars().collect::<Vec<char>>()))
     );
-    let txt = ("99".chars().collect::<Vec<char>>());
-    println!("8->: {:?}", p_int().parse(&txt));
+    let txt = ("88".chars().collect::<Vec<char>>());
+    println!("8->: {:?}", p_string().parse(&txt));
 }

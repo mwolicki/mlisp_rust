@@ -294,19 +294,19 @@ where
 }
 
 pub fn p_string<'a>() -> RcParser<'a, String> {
-    let chars = (('0' as u8)..('z' as u8))
+    let chars = (('0' as u8)..('z' as u8) + 1)
         .map(|x| parse_char(x as char).as_rc())
         .collect::<Vec<_>>();
 
-    any(chars).all().map(|x| x.into_iter().collect::<String>())
+    all(any(chars)).map(|x| x.into_iter().collect::<String>())
 }
 
 pub fn p_int<'a>() -> RcParser<'a, i64> {
-    let chars = (('0' as u8)..('9' as u8))
+    let chars = (('0' as u8)..('9' as u8) + 1)
         .map(|x| parse_char(x as char).as_rc())
         .collect::<Vec<_>>();
-    //print!("{}", chars);
-    any(chars).all().map(|x| {
+
+    all(any(chars)).map(|x| {
         x.into_iter().collect::<String>().parse::<i64>().unwrap()
     })
 }
