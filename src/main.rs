@@ -20,10 +20,5 @@ fn main() {
     println!("5->: {:?}", parse_string("abcddefg").parse(&c));
     println!("6->: {:?}", parse_string("abc").right(p_string()).parse(&c));
     println!("7->: {:?}", p3.parse(&c).map(|_| 1));
-    println!(
-        "7->: {:?}",
-        parser::parse(&("(01234567890)yz".chars().collect::<Vec<char>>()))
-    );
-    let txt = ("88".chars().collect::<Vec<char>>());
-    println!("8->: {:?}", p_string().parse(&txt));
+    println!("8->: {:?}", parser::parse("(01234567890)yz"));
 }

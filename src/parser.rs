@@ -11,7 +11,12 @@ pub enum Expr<'a> {
 }
 
 
-pub fn parse<'a>(txt: &'a [char]) -> ParseResult<Expr<'a>> {
+pub fn parse<'a>(txt: &'a str) -> ParseResult<Expr<'a>> {
+    let t = txt.chars().collect::<Vec<char>>();
+    parse_vec(&t)
+}
+
+pub fn parse_vec<'a>(txt: &'a [char]) -> ParseResult<Expr<'a>> {
     let expr = refl_parser(|expr| {
         let expr_impl = vec![
             p_int().map(|x| Expr::EInt(x)),
