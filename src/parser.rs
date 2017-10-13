@@ -1,4 +1,5 @@
-use ::*;
+use parser_combinators::*;
+
 type Ident = String;
 
 #[derive(Debug, Clone, Copy)]
@@ -10,13 +11,17 @@ pub enum Expr<'a> {
 }
 
 
-pub fn parse() -> Expr<'static> {
-    // let mut expr = refl_parser();
+pub fn parse<'a>(txt: &'a [char]) -> ParseResult<Expr<'a>> {
+    let expr = refl_parser(|expr| {
+        let expr_impl = vec![
+            p_int().map(|x| Expr::EInt(x)),
+            parse_char('(').right(expr.map(|_| Expr::EInt(2))).left(
+                parse_char(')')
+            ),
+        ];
 
-    // let exprImpl = vec![parse_char('x').map(|_| Expr::EInt(1))];
-    // let x = any(&exprImpl);
-    // expr.set(x);
+        any(expr_impl)
+    });
 
-    Expr::EInt(1)
-
+    expr.parse(txt)
 }

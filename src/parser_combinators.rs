@@ -1,8 +1,9 @@
 
 use std::marker::PhantomData;
-use std::*;
 use std;
 use std::rc::Rc;
+use std::cell::RefCell;
+
 #[derive(Debug)]
 pub struct Corr<'a, T> {
     txt: &'a [char],
@@ -18,7 +19,7 @@ pub enum ParseResult<'a, T> {
 impl<'a, T> ParseResult<'a, T> {
     pub fn map<Fun, Out>(self, mapper: Fun) -> ParseResult<'a, Out>
     where
-        Fun: FnOnce(T) -> Out,
+        Fun: Fn(T) -> Out,
     {
         match self {
             ParseResult::Ok(corr) => ParseResult::Ok(Corr {
@@ -32,7 +33,7 @@ impl<'a, T> ParseResult<'a, T> {
 
 
 
-#[derive(Clone, Copy)]
+#[derive(Debug)]
 pub struct CharParser(char);
 
 impl<'a> Parser<'a> for CharParser {
@@ -52,7 +53,6 @@ impl<'a> Parser<'a> for CharParser {
     }
 }
 
-#[derive(Clone, Copy)]
 pub struct StringParser<'a> {
     txt: &'a str,
 }
@@ -82,20 +82,11 @@ impl<'a> Parser<'a> for StringParser<'a> {
 }
 
 
-#[derive(Clone, Copy)]
-pub struct LambdaParser<'a, Out, T>
-where
-    T: Fn(&'a [char]) -> ParseResult<'a, Out>,
-{
-    f: T,
-    phantom: PhantomData<(&'a i8, Out)>,
-}
 
 pub fn parse_char(ch: char) -> CharParser {
     CharParser(ch)
 }
 
-#[derive(Clone, Copy)]
 pub struct BothParser<'a, A, B>
 where
     A: Parser<'a>,
@@ -133,7 +124,6 @@ where
 }
 
 
-#[derive(Clone, Copy)]
 pub struct LeftParser<'a, A, B>
 where
     A: Parser<'a>,
@@ -171,14 +161,10 @@ where
 }
 
 
-#[derive(Clone, Copy)]
 pub struct MapParser<'a, Out, Fun, A, ARet>
 where
     Fun: FnOnce(ARet) -> Out,
     A: Parser<'a, Return = ARet>,
-    Fun: Copy,
-    ARet: Copy,
-    Out: Copy,
 {
     map: Fun,
     parser: A,
@@ -187,17 +173,15 @@ where
 
 impl<'a, Out, Fun, A, ARet> Parser<'a> for MapParser<'a, Out, Fun, A, ARet>
 where
-    Fun: FnOnce(ARet) -> Out
-        + Copy
-        + 'static,
-    ARet: Copy + 'static,
-    Out: Copy + 'static,
+    Fun: Fn(ARet) -> Out + 'a,
     A: Parser<'a, Return = ARet>
-        + 'static,
+        + 'a,
+    ARet: 'a,
+    Out: 'a,
 {
     type Return = Out;
     fn parse(&self, txt: &'a [char]) -> ParseResult<'a, Out> {
-        self.parser.parse(txt).map(self.map)
+        self.parser.parse(txt).map(&self.map)
     }
 
     fn as_rc(self) -> RcParser<'a, Self::Return> {
@@ -205,7 +189,6 @@ where
     }
 }
 
-#[derive(Clone, Copy)]
 pub struct RightParser<'a, A, B>
 where
     A: Parser<'a> + 'a,
@@ -242,26 +225,14 @@ where
     }
 }
 
-#[derive(Clone, Copy)]
-pub struct AllParser<'a, P>
+pub fn all<'a, T>(parser: RcParser<'a, T>) -> RcParser<'a, Vec<T>>
 where
-    P: Parser<'a> + 'a,
+    T: 'a,
 {
-    parser: P,
-    phantom: PhantomData<&'a PhantomData<P>>,
-}
-
-impl<'a, P, Ret> Parser<'a> for AllParser<'a, P>
-where
-    P: Parser<'a, Return = Ret>,
-    Ret: 'a,
-    P: Copy,
-{
-    type Return = Vec<Ret>;
-    fn parse(&self, txt: &'a [char]) -> ParseResult<'a, Self::Return> {
+    LambdaParser::create(move |txt| {
         let mut res = Vec::new();
         let mut txt = txt;
-        while let ParseResult::Ok(corr) = self.parser.parse(txt) {
+        while let ParseResult::Ok(corr) = parser.parse(txt) {
             res.push(corr.res);
             txt = corr.txt;
         }
@@ -271,65 +242,34 @@ where
         } else {
             ParseResult::Ok(Corr { res, txt })
         }
-    }
-
-    fn as_rc(self) -> RcParser<'a, Self::Return> {
-        Rc::new(self)
-    }
+    })
 }
 
-#[derive(Clone, Copy)]
-pub struct AnyParser<'a, P>
+pub fn any<'a, T>(parsers: Vec<RcParser<'a, T>>) -> RcParser<'a, T>
 where
-    P: Parser<'a> + 'a,
+    T: 'a,
 {
-    parsers: &'a [P],
-}
-
-impl<'a, P, Ret> Parser<'a> for AnyParser<'a, P>
-where
-    P: Parser<'a, Return = Ret>,
-    Ret: 'a,
-    P: Copy,
-{
-    type Return = Ret;
-    fn parse(&self, txt: &'a [char]) -> ParseResult<'a, Self::Return> {
-        for p in self.parsers {
+    let ps = Rc::new(parsers);
+    LambdaParser::create(move |txt| {
+        let parsers = ps.as_ref();
+        for p in parsers {
             if let ParseResult::Ok(corr) = p.parse(txt) {
                 return ParseResult::Ok(corr);
             }
         }
 
         ParseResult::Fail("any: no matches", txt)
-    }
-
-    fn as_rc(self) -> RcParser<'a, Self::Return> {
-        Rc::new(self)
-    }
+    })
 }
 
-pub fn any<'a, P>(parsers: &'a [P]) -> AnyParser<'a, P>
+impl<'a, TRet> Parser<'a> for RefCell<Option<RcParser<'a, TRet>>>
 where
-    P: Parser<'a> + 'a,
+    TRet: 'a,
 {
-    AnyParser { parsers }
-}
-
-pub struct ReflParser<'a, TRet, Par>(Option<Par>, PhantomData<(&'a i8, TRet)>)
-where
-    Par: Parser<'a, Return = TRet>,
-    Par: Sized;
-
-
-impl<'a, T, X> Parser<'a> for ReflParser<'a, T, X>
-where
-    X: Parser<'a, Return = T> + 'static + Sized,
-    T: 'static,
-    Self: Copy,
-{
-    type Return = T;
+    type Return = TRet;
     fn parse(&self, txt: &'a [char]) -> ParseResult<'a, Self::Return> {
-        if let Some(ref p) = self.0 {
+        let x = self.borrow();
+        if let Some(ref p) = *x {
             p.parse(txt)
         } else {
             panic!("implementation was not set");
@@ -341,63 +281,77 @@ where
     }
 }
 
-impl<'a, TRet, Par> ReflParser<'a, TRet, Par>
+
+pub fn refl_parser<'a, Ret, S>(scope: S) -> RcParser<'a, Ret>
 where
-    Par: Parser<'a, Return = TRet>,
-    Par: Sized,
+    S: FnOnce(RcParser<'a, Ret>) -> RcParser<'a, Ret> + 'a,
+    Ret: 'a,
 {
-    fn set(&mut self, p: Par) {
-        self.0 = Some(p);
+    let x: Rc<_> = Rc::new(RefCell::new(None));
+    let expr = scope(x.clone());
+    *x.as_ref().borrow_mut() = Some(expr);
+    x
+}
+
+pub fn p_string<'a>() -> RcParser<'a, String> {
+    let chars = (('0' as u8)..('z' as u8))
+        .map(|x| parse_char(x as char).as_rc())
+        .collect::<Vec<_>>();
+
+    any(chars).all().map(|x| x.into_iter().collect::<String>())
+}
+
+pub fn p_int<'a>() -> RcParser<'a, i64> {
+    let chars = (('0' as u8)..('9' as u8))
+        .map(|x| parse_char(x as char).as_rc())
+        .collect::<Vec<_>>();
+    //print!("{}", chars);
+    any(chars).all().map(|x| {
+        x.into_iter().collect::<String>().parse::<i64>().unwrap()
+    })
+}
+
+pub type RcParser<'a, R> = Rc<Parser<'a, Return = R> + 'a>;
+
+
+#[derive(Clone, Copy)]
+pub struct LambdaParser<'a, Out, T>
+where
+    T: Fn(&'a [char]) -> ParseResult<'a, Out>,
+{
+    f: T,
+    phantom: PhantomData<(&'a i8, Out)>,
+}
+
+impl<'a, Out, T> LambdaParser<'a, Out, T>
+where
+    T: Fn(&'a [char]) -> ParseResult<'a, Out> + 'a,
+    Out: 'a,
+{
+    fn create(f: T) -> RcParser<'a, Out> {
+        as_rc(LambdaParser {
+            phantom: PhantomData,
+            f,
+        })
     }
 }
 
-pub fn refl_parser<'a, Ret, Par>() -> ReflParser<'a, Ret, Par>
+impl<'a, Out, T> Parser<'a> for LambdaParser<'a, Out, T>
 where
-    Par: Parser<'a, Return = Ret>,
-    Par: Sized,
+    T: Fn(&'a [char]) -> ParseResult<'a, Out> + 'a,
+    Out:'a
 {
-    ReflParser(None, PhantomData)
+    type Return = Out;
+
+    fn parse(&self, txt: &'a [char]) -> ParseResult<'a, Self::Return> {
+        let f = &self.f;
+        f(txt)
+    }
+
+    fn as_rc(self) -> RcParser<'a, Self::Return> {
+        Rc::new(self)
+    }
 }
-
-// pub fn p_string<'a>() -> AllParser<'a, AnyParser<'a, CharParser>> {
-//     static mut PARSERS: Option<Vec<CharParser>> = None;
-//     let p = unsafe {
-//         if let None = PARSERS {
-//             let chars = (('0' as u8)..('z' as u8))
-//                 .map(|x| parse_char(x as char))
-//                 .collect::<Vec<CharParser>>();
-
-//             PARSERS = Some(chars);
-//         }
-//         if let Some(ref parser) = PARSERS {
-//             any(parser)
-//         } else {
-//             panic!("blah")
-//         }
-//     };
-//     p.all()
-// }
-
-// pub fn p_int<'a>() -> AllParser<'a, AnyParser<'a, CharParser>> {
-//     static mut PARSERS: Option<Vec<CharParser>> = None;
-//     let p = unsafe {
-//         if let None = PARSERS {
-//             let chars = (('0' as u8)..('9' as u8))
-//                 .map(|x| parse_char(x as char))
-//                 .collect::<Vec<CharParser>>();
-
-//             PARSERS = Some(chars);
-//         }
-//         if let Some(ref parser) = PARSERS {
-//             any(parser)
-//         } else {
-//             panic!("blah")
-//         }
-//     };
-//     p.all()
-// }
-
-pub type RcParser<'a, R> = Rc<Parser<'a, Return = R> + 'a>;
 
 
 fn as_rc<'a, P, R>(p: P) -> RcParser<'a, R>
@@ -415,10 +369,8 @@ pub trait Parser<'a> {
 
     fn both<B, BRet>(self, right: B) -> RcParser<'a, (Self::Return, BRet)>
     where
-        Self: Sized + Copy + 'a,
-        Self::Return: Copy,
-        BRet: Copy,
-        B: Parser<'a, Return = BRet> + 'a + Copy,
+        Self: Sized + 'a,
+        B: Parser<'a, Return = BRet> + 'a,
     {
         as_rc(BothParser {
             left: self,
@@ -427,55 +379,49 @@ pub trait Parser<'a> {
         })
     }
 
-    fn left<B, BRet>(self, right: B) -> LeftParser<'a, Self, B>
+    fn left<B, BRet>(self, right: B) -> RcParser<'a, Self::Return>
     where
-        B: Parser<'a, Return = BRet>,
-        Self: std::marker::Sized,
+        B: Parser<'a, Return = BRet> + 'a,
+        Self: Sized + 'a,
     {
-        LeftParser {
+        as_rc(LeftParser {
             left: self,
             right,
             phantom: PhantomData,
-        }
+        })
+
     }
 
-    fn map<Fun, Out>(self, map: Fun) -> MapParser<'a, Out, Fun, Self, Self::Return>
+    fn map<Fun, Out>(self, map: Fun) -> RcParser<'a, Out>
     where
-        Fun: FnOnce(Self::Return) -> Out,
-        Fun: Copy,
-        Out: Copy,
-        Self::Return: Copy,
-        Self: Copy,
-        Self: std::marker::Sized,
+        Fun: Fn(Self::Return) -> Out + 'a,
+        Self: Sized + 'a,
+        Out: 'a,
     {
-        MapParser {
+        as_rc(MapParser {
             parser: self,
             map,
             phantom: PhantomData,
-        }
+        })
     }
 
-    fn right<B, BRet>(self, right: B) -> RightParser<'a, Self, B>
+    fn right<B, BRet>(self, right: B) -> RcParser<'a, BRet>
     where
-        B: Parser<'a, Return = BRet>,
-        Self: std::marker::Sized,
+        B: Parser<'a, Return = BRet> + 'a,
+        Self: std::marker::Sized + 'a,
     {
-        RightParser {
+        as_rc(RightParser {
             left: self,
             right,
             phantom: PhantomData,
-        }
+        })
     }
 
-    fn all(self) -> RcParser<'a, Self::Return>
+    fn all(self) -> RcParser<'a, Vec<Self::Return>>
     where
-        Self: Sized,
+        Self: Sized + 'a,
     {
-        // (AllParser {
-        //     parser: self,
-        //     phantom: PhantomData,
-        // }).as_rc()
-        panic!("")
+        all(as_rc(self))
 
     }
 }
