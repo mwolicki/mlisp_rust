@@ -83,8 +83,8 @@ impl<'a> Parser<'a> for StringParser<'a> {
 
 
 
-pub fn parse_char(ch: char) -> CharParser {
-    CharParser(ch)
+pub fn parse_char<'a>(ch: char) -> RcParser<'a, char> {
+    as_rc(CharParser(ch))
 }
 
 pub struct BothParser<'a, A, B>
@@ -294,7 +294,7 @@ where
 }
 
 pub fn p_string<'a>() -> RcParser<'a, String> {
-    let chars = (('!' as u8)..('~' as u8) + 1)
+    let chars = (('*' as u8)..('z' as u8) + 1)
         .map(|x| parse_char(x as char).as_rc())
         .collect::<Vec<_>>();
 
@@ -308,6 +308,20 @@ pub fn p_int<'a>() -> RcParser<'a, i64> {
 
     all(any(chars)).map(|x| {
         x.into_iter().collect::<String>().parse::<i64>().unwrap()
+    })
+}
+
+pub fn spaces<'a>() -> RcParser<'a, usize> {
+    LambdaParser::create(|txt| {
+
+        let c = txt.iter()
+            .take_while(|x| **x == ' ' || **x == '\t' || **x == '\r' || **x == '\n')
+            .count();
+
+        ParseResult::Ok(Corr {
+            res: c,
+            txt: &txt[c..],
+        })
     })
 }
 
