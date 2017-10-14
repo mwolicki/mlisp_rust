@@ -1,14 +1,5 @@
 use parser_combinators::*;
-
-type Ident = String;
-
-#[derive(Debug, Clone)]
-pub enum Expr {
-    EInt(i64),
-    EStr(String),
-    EIdent(Ident),
-    EList(Ident, Vec<Expr>),
-}
+use expr::Expr;
 
 pub fn parse<'a>(txt: &'a [char]) -> ParseResult<Expr> {
     let expr = refl_parser(|expr| {
