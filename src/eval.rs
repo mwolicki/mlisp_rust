@@ -22,9 +22,9 @@ pub enum Value {
 }
 
 //fix signature to use &str
-pub fn eval<'a>(expr: &'a Expr) -> Result<Value, String> {
+pub fn eval<'a, 'b>(expr: &'b Expr) -> Result<Value, &'a str> {
 
-    fn eval(expr: &Expr, values: Env) -> Result<Value, String> {
+    fn eval<'a, 'b>(expr: &'b Expr, values: Env) -> Result<Value, &'a str> {
         match *expr {
             Expr::EInt(val) => Ok(Value::Atom(Atom::Int(val))),
             Expr::EStr(ref val) => Ok(Value::Atom(Atom::String(val.clone()))),
@@ -33,7 +33,7 @@ pub fn eval<'a>(expr: &'a Expr) -> Result<Value, String> {
                     "true" => Ok(Value::Atom(Atom::Bool(true))),
                     "false" => Ok(Value::Atom(Atom::Bool(false))),
                     "unit" => Ok(Value::Atom(Atom::Unit)),
-                    _ => Err(String::from("expected true, false or unit.")),
+                    _ => Err("expected true, false or unit."),
                 }
             }
             Expr::EList(ref name, ref vals) => {
@@ -41,7 +41,7 @@ pub fn eval<'a>(expr: &'a Expr) -> Result<Value, String> {
                     .map(|v| eval(&v, values.clone()))
                     .collect::<Result<Vec<_>, _>>()?;
 
-                fn i64_calc<F>(f: F, zero: i64, vals: &Vec<Value>) -> Result<Value, String>
+                fn i64_calc<'a, F>(f: F, zero: i64, vals: &Vec<Value>) -> Result<Value, &'a str>
                 where
                     F: Fn(i64, i64) -> i64,
                 {
@@ -49,7 +49,7 @@ pub fn eval<'a>(expr: &'a Expr) -> Result<Value, String> {
                         .map(|x| if let Value::Atom(Atom::Int(v)) = *x {
                             Ok(v)
                         } else {
-                            Err(String::from("expected int"))
+                            Err("expected int")
                         })
                         .collect::<Result<Vec<_>, _>>()?;
                     Ok(Value::Atom(
@@ -62,7 +62,7 @@ pub fn eval<'a>(expr: &'a Expr) -> Result<Value, String> {
                     "-" | "sub" => i64_calc(|a, b| a - b, 0, &vals),
                     "/" | "div" => i64_calc(|a, b| a / b, 1, &vals),
                     "*" | "mul" => i64_calc(|a, b| a * b, 1, &vals),
-                    _ => Err(name.clone()),
+                    _ => Err("unexpected operation"),
                 }
             }
         }
