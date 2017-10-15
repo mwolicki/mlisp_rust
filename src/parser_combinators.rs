@@ -12,7 +12,7 @@ pub struct Corr<'a, T> {
 
 pub type ParseResult<'a, T> = Result<Corr<'a, T>, (&'a str, &'a [char])>;
 
-pub fn parse_char<'a>(ch: char) -> RcParser<'a, char> {
+pub fn p_char<'a>(ch: char) -> RcParser<'a, char> {
     LambdaParser::create(move |txt| if !txt.is_empty() && txt[0] == ch {
         Ok(Corr {
             txt: &txt[1..],
@@ -23,7 +23,7 @@ pub fn parse_char<'a>(ch: char) -> RcParser<'a, char> {
     })
 }
 
-pub fn parse_string<'a>(string: &'a str) -> RcParser<'a, &'a str> {
+pub fn p_str<'a>(string: &'a str) -> RcParser<'a, &'a str> {
     let s: Vec<char> = string.chars().collect();
     LambdaParser::create(move |txt| if txt.starts_with(&s) {
         let corr = Corr {
@@ -176,7 +176,7 @@ where
 
 pub fn p_string<'a>() -> RcParser<'a, String> {
     let chars = (('*' as u8)..('z' as u8) + 1)
-        .map(|x| parse_char(x as char).as_rc())
+        .map(|x| p_char(x as char).as_rc())
         .collect::<Vec<_>>();
 
     all(any(chars)).map(|x| x.into_iter().collect::<String>())
@@ -184,7 +184,7 @@ pub fn p_string<'a>() -> RcParser<'a, String> {
 
 pub fn p_int<'a>() -> RcParser<'a, i64> {
     let chars = (('0' as u8)..('9' as u8) + 1)
-        .map(|x| parse_char(x as char).as_rc())
+        .map(|x| p_char(x as char).as_rc())
         .collect::<Vec<_>>();
 
     all(any(chars)).map(|x| {

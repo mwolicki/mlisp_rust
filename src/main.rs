@@ -13,17 +13,15 @@ fn main() {
 
     let c = s("abcddefg0");
 
-    let p = parse_char('a').both(parse_char('b')).left(parse_char('c'));
-    let p2 = parse_char('a').both(parse_char('b')).left(parse_char('c'));
-    let p3 = parse_char('a').both(parse_char('b')).left(parse_char('c'));
+    let p = p_char('a').both(p_char('b')).left(p_char('c'));
 
     println!("1->: {:?}", p.parse(&c));
-    println!("2->: {:?}", p.right(parse_char('d')).parse(&c));
-    println!("3->: {:?}", p2.right(parse_char('d').all()).parse(&c));
-    println!("4->: {:?}", parse_char('d').parse(&c));
-    println!("5->: {:?}", parse_string("abcddefg").parse(&c));
-    println!("6->: {:?}", parse_string("abc").right(p_string()).parse(&c));
-    println!("7->: {:?}", p3.parse(&c).map(|_| 1));
+    println!("2->: {:?}", p.clone().right(p_char('d')).parse(&c));
+    println!("3->: {:?}", p.clone().right(p_char('d').all()).parse(&c));
+    println!("4->: {:?}", p_char('d').parse(&c));
+    println!("5->: {:?}", p_str("abcddefg").parse(&c));
+    println!("6->: {:?}", p_str("abc").right(p_string()).parse(&c));
+    println!("7->: {:?}", p.parse(&c).map(|_| 1));
     println!(
         "8->: {:?}",
         parser::parse(&s(
