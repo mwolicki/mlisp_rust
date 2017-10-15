@@ -1,7 +1,8 @@
 use std::collections::HashMap;
 use expr::Expr;
+use parser::parse;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Atom {
     Int(i64),
     String(String),
@@ -13,7 +14,7 @@ pub enum Atom {
 type Name = String;
 type Env = HashMap<Name, (Vec<Name>, Value)>;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Value {
     Atom(Atom),
 //    List(Box<Value>), //not in use yet
@@ -68,4 +69,17 @@ pub fn eval<'a, 'b>(expr: &'b Expr) -> Result<Value, &'a str> {
     }
 
     eval(expr, HashMap::new())
+}
+
+
+fn s(txt: &str) -> Vec<char> {
+    txt.chars().collect::<Vec<char>>()
+}
+
+#[test]
+fn eval_test() {
+    assert_eq!(
+        parse(&s("(+ (* 2 2) 2 3 )")).map(|x| eval(&x.res)),
+        Ok(Ok(Value::Atom(Atom::Int(9))))
+    );
 }
