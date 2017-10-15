@@ -29,11 +29,11 @@ fn main() {
         parser::parse(&s(
             "(+           
                  (add 1 2 3)    1 2 (/ 1 2 3)    1 2)",
-        )).map(|x| eval::eval(&x))
+        )).map(|x| eval::eval(&x.res))
     );
 
     println!(
         "9->: {:?}",
-        parser::parse(&s("(+ (* 2 2) 2 3 )")).map(|x| eval::eval(&x))
+        parser::parse(&s("(+ (* 2 2) 2 3 )")).map(|x| eval::eval(&x.res))
     );
 }

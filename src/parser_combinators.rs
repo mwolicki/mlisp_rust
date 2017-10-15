@@ -7,31 +7,10 @@ use std::cell::RefCell;
 #[derive(Debug)]
 pub struct Corr<'a, T> {
     txt: &'a [char],
-    res: T,
+    pub res: T,
 }
 
-#[derive(Debug)]
-pub enum ParseResult<'a, T> {
-    Ok(Corr<'a, T>),
-    Fail(&'a str, &'a [char]),
-}
-
-impl<'a, T> ParseResult<'a, T> {
-    pub fn map<Fun, Out>(self, mapper: Fun) -> ParseResult<'a, Out>
-    where
-        Fun: Fn(T) -> Out,
-    {
-        match self {
-            ParseResult::Ok(corr) => ParseResult::Ok(Corr {
-                txt: corr.txt,
-                res: mapper(corr.res),
-            }),
-            ParseResult::Fail(reason, txt) => ParseResult::Fail(reason, txt),
-        }
-    }
-}
-
-
+pub type ParseResult<'a, T> = Result<Corr<'a, T>, (&'a str, &'a [char])>;
 
 #[derive(Debug)]
 pub struct CharParser(char);
@@ -40,12 +19,12 @@ impl<'a> Parser<'a> for CharParser {
     type Return = char;
     fn parse(&self, txt: &'a [char]) -> ParseResult<'a, char> {
         if !txt.is_empty() && txt[0] == self.0 {
-            ParseResult::Ok(Corr {
+            Ok(Corr {
                 txt: &txt[1..],
                 res: self.0,
             })
         } else {
-            ParseResult::Fail("no char", txt)
+            Err(("no char", txt))
         }
     }
     fn as_rc(self) -> RcParser<'a, Self::Return> {
@@ -70,9 +49,9 @@ impl<'a> Parser<'a> for StringParser<'a> {
                 txt: &txt[s.len()..],
                 res: self.txt,
             };
-            ParseResult::Ok(corr)
+            Ok(corr)
         } else {
-            ParseResult::Fail("no char", txt)
+            Err(("no char", txt))
         }
     }
 
@@ -104,18 +83,12 @@ where
 {
     type Return = (ARet, BRet);
     fn parse(&self, txt: &'a [char]) -> ParseResult<'a, Self::Return> {
-        match self.left.parse(txt) {
-            ParseResult::Ok(a_corr) => {
-                match self.right.parse(a_corr.txt) {
-                    ParseResult::Ok(b_corr) => ParseResult::Ok(Corr {
-                        txt: b_corr.txt,
-                        res: (a_corr.res, b_corr.res),
-                    }),
-                    ParseResult::Fail(res, txt) => ParseResult::Fail(res, txt),
-                }
-            }
-            ParseResult::Fail(res, txt) => ParseResult::Fail(res, txt),
-        }
+        let a_corr = self.left.parse(txt)?;
+        let b_corr = self.right.parse(a_corr.txt)?;
+        Ok(Corr {
+            txt: b_corr.txt,
+            res: (a_corr.res, b_corr.res),
+        })
     }
 
     fn as_rc(self) -> RcParser<'a, Self::Return> {
@@ -141,18 +114,12 @@ where
 {
     type Return = ARet;
     fn parse(&self, txt: &'a [char]) -> ParseResult<'a, Self::Return> {
-        match self.left.parse(txt) {
-            ParseResult::Ok(a_corr) => {
-                match self.right.parse(a_corr.txt) {
-                    ParseResult::Ok(b_corr) => ParseResult::Ok(Corr {
-                        txt: b_corr.txt,
-                        res: a_corr.res,
-                    }),
-                    ParseResult::Fail(res, txt) => ParseResult::Fail(res, txt),
-                }
-            }
-            ParseResult::Fail(res, txt) => ParseResult::Fail(res, txt),
-        }
+        let a_corr = self.left.parse(txt)?;
+        let b_corr = self.right.parse(a_corr.txt)?;
+        Ok(Corr {
+            txt: b_corr.txt,
+            res: a_corr.res,
+        })
     }
 
     fn as_rc(self) -> RcParser<'a, Self::Return> {
@@ -181,7 +148,17 @@ where
 {
     type Return = Out;
     fn parse(&self, txt: &'a [char]) -> ParseResult<'a, Out> {
-        self.parser.parse(txt).map(&self.map)
+        match self.parser.parse(txt) {
+
+            Ok(cor) => {
+                let f = &self.map;
+                Ok(Corr {
+                    res: f(cor.res),
+                    txt: cor.txt,
+                })
+            }
+            Err(e) => Err(e),
+        }
     }
 
     fn as_rc(self) -> RcParser<'a, Self::Return> {
@@ -206,18 +183,12 @@ where
 {
     type Return = RetB;
     fn parse(&self, txt: &'a [char]) -> ParseResult<'a, Self::Return> {
-        match self.left.parse(txt) {
-            ParseResult::Ok(a_corr) => {
-                match self.right.parse(a_corr.txt) {
-                    ParseResult::Ok(b_corr) => ParseResult::Ok(Corr {
-                        txt: b_corr.txt,
-                        res: b_corr.res,
-                    }),
-                    ParseResult::Fail(res, txt) => ParseResult::Fail(res, txt),
-                }
-            }
-            ParseResult::Fail(res, txt) => ParseResult::Fail(res, txt),
-        }
+        let a_corr = self.left.parse(txt)?;
+        let b_corr = self.right.parse(a_corr.txt)?;
+        Ok(Corr {
+            txt: b_corr.txt,
+            res: b_corr.res,
+        })
     }
 
     fn as_rc(self) -> RcParser<'a, Self::Return> {
@@ -232,15 +203,15 @@ where
     LambdaParser::create(move |txt| {
         let mut res = Vec::new();
         let mut txt = txt;
-        while let ParseResult::Ok(corr) = parser.parse(txt) {
+        while let Ok(corr) = parser.parse(txt) {
             res.push(corr.res);
             txt = corr.txt;
         }
 
         if res.is_empty() {
-            ParseResult::Fail("all: no matches", txt)
+            Err(("all: no matches", txt))
         } else {
-            ParseResult::Ok(Corr { res, txt })
+            Ok(Corr { res, txt })
         }
     })
 }
@@ -253,12 +224,12 @@ where
     LambdaParser::create(move |txt| {
         let parsers = ps.as_ref();
         for p in parsers {
-            if let ParseResult::Ok(corr) = p.parse(txt) {
-                return ParseResult::Ok(corr);
+            if let Ok(corr) = p.parse(txt) {
+                return Ok(corr);
             }
         }
 
-        ParseResult::Fail("any: no matches", txt)
+        Err(("any: no matches", txt))
     })
 }
 
@@ -318,7 +289,7 @@ pub fn spaces<'a>() -> RcParser<'a, usize> {
             .take_while(|x| **x == ' ' || **x == '\t' || **x == '\r' || **x == '\n')
             .count();
 
-        ParseResult::Ok(Corr {
+        Ok(Corr {
             res: c,
             txt: &txt[c..],
         })
