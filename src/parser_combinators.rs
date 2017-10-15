@@ -87,42 +87,23 @@ where
     })
 }
 
-pub struct MapParser<'a, Out, Fun, A, ARet>
-where
-    Fun: FnOnce(ARet) -> Out,
-    A: Parser<'a, Return = ARet>,
-{
-    map: Fun,
-    parser: A,
-    phantom: PhantomData<(&'a i8, A, Fun)>,
-}
-
-impl<'a, Out, Fun, A, ARet> Parser<'a> for MapParser<'a, Out, Fun, A, ARet>
+pub fn map_parser<'a, Out, Fun, A, ARet>(parser: A, mapper: Fun) -> RcParser<'a, Out>
 where
     Fun: Fn(ARet) -> Out + 'a,
-    A: Parser<'a, Return = ARet>
-        + 'a,
-    ARet: 'a,
+    A: Parser<'a, Return = ARet> + 'a,
     Out: 'a,
 {
-    type Return = Out;
-    fn parse(&self, txt: &'a [char]) -> ParseResult<'a, Out> {
-        match self.parser.parse(txt) {
+    LambdaParser::create(move |txt| match parser.parse(txt) {
 
-            Ok(cor) => {
-                let f = &self.map;
-                Ok(Corr {
-                    res: f(cor.res),
-                    txt: cor.txt,
-                })
-            }
-            Err(e) => Err(e),
+        Ok(cor) => {
+            let f = &mapper;
+            Ok(Corr {
+                res: f(cor.res),
+                txt: cor.txt,
+            })
         }
-    }
-
-    fn as_rc(self) -> RcParser<'a, Self::Return> {
-        Rc::new(self)
-    }
+        Err(e) => Err(e),
+    })
 }
 
 pub fn all<'a, T>(parser: RcParser<'a, T>) -> RcParser<'a, Vec<T>>
@@ -297,17 +278,13 @@ pub trait Parser<'a> {
         left(self, right)
     }
 
-    fn map<Fun, Out>(self, map: Fun) -> RcParser<'a, Out>
+    fn map<Fun, Out>(self, mapper: Fun) -> RcParser<'a, Out>
     where
         Fun: Fn(Self::Return) -> Out + 'a,
         Self: Sized + 'a,
         Out: 'a,
     {
-        as_rc(MapParser {
-            parser: self,
-            map,
-            phantom: PhantomData,
-        })
+        map_parser(self, mapper)
     }
 
     fn right<B, BRet>(self, right_parser: B) -> RcParser<'a, BRet>
