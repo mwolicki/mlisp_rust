@@ -223,10 +223,10 @@ where
     Out: 'a,
 {
     fn create(f: T) -> RcParser<'a, Out> {
-        as_rc(LambdaParser {
+        LambdaParser {
             phantom: PhantomData,
             f,
-        })
+        }.as_rc()
     }
 }
 
@@ -245,14 +245,6 @@ where
     fn as_rc(self) -> RcParser<'a, Self::Return> {
         Rc::new(self)
     }
-}
-
-
-fn as_rc<'a, P, R>(p: P) -> RcParser<'a, R>
-where
-    P: Parser<'a, Return = R> + 'a,
-{
-    p.as_rc()
 }
 
 pub trait Parser<'a> {
@@ -300,8 +292,7 @@ pub trait Parser<'a> {
     where
         Self: Sized + 'a,
     {
-        all(as_rc(self))
-
+        all(self.as_rc())
     }
 }
 
