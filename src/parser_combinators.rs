@@ -253,39 +253,39 @@ pub trait Parser<'a> {
 
     fn as_rc(self) -> RcParser<'a, Self::Return>;
 
-    fn both<B, BRet>(self, right: B) -> RcParser<'a, (Self::Return, BRet)>
+    fn both<B, BRet>(&self, right: B) -> RcParser<'a, (Self::Return, BRet)>
     where
-        Self: Sized + 'a,
+        Self: Sized + 'a + Clone,
         B: Parser<'a, Return = BRet> + 'a,
         BRet: 'a,
     {
-        both(self, right)
+        both(self.clone(), right)
     }
 
-    fn left<B, BRet>(self, right: B) -> RcParser<'a, Self::Return>
+    fn left<B, BRet>(&self, right: B) -> RcParser<'a, Self::Return>
     where
         B: Parser<'a, Return = BRet> + 'a,
-        Self: Sized + 'a,
+        Self: Sized + 'a + Clone,
     {
-        left(self, right)
+        left(self.clone(), right)
     }
 
-    fn map<Fun, Out>(self, mapper: Fun) -> RcParser<'a, Out>
+    fn map<Fun, Out>(&self, mapper: Fun) -> RcParser<'a, Out>
     where
         Fun: Fn(Self::Return) -> Out + 'a,
-        Self: Sized + 'a,
+        Self: Sized + 'a + Clone,
         Out: 'a,
     {
-        map_parser(self, mapper)
+        map_parser(self.clone(), mapper)
     }
 
-    fn right<B, BRet>(self, right_parser: B) -> RcParser<'a, BRet>
+    fn right<B, BRet>(&self, right_parser: B) -> RcParser<'a, BRet>
     where
         B: Parser<'a, Return = BRet> + 'a,
-        Self: std::marker::Sized + 'a,
+        Self: std::marker::Sized + 'a + Clone,
         BRet: 'a,
     {
-        right(self, right_parser)
+        right(self.clone(), right_parser)
     }
 
     fn all(self) -> RcParser<'a, Vec<Self::Return>>

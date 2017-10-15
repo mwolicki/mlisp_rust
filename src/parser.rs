@@ -2,12 +2,12 @@ use parser_combinators::*;
 use expr::Expr;
 
 pub fn parse<'a>(txt: &'a [char]) -> ParseResult<Expr> {
+    let quote_mark = p_char('"');
     let expr = refl_parser(|expr| {
-
         let expr_impl = vec![
             p_int().map(Expr::EInt),
-            p_char('"').right(p_string().map(Expr::EStr)).left(
-                p_char('"')
+            quote_mark.right(p_string().map(Expr::EStr)).left(
+                quote_mark
             ),
 
             p_string().map(Expr::EIdent),

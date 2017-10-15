@@ -16,8 +16,8 @@ fn main() {
     let p = p_char('a').both(p_char('b')).left(p_char('c'));
 
     println!("1->: {:?}", p.parse(&c));
-    println!("2->: {:?}", p.clone().right(p_char('d')).parse(&c));
-    println!("3->: {:?}", p.clone().right(p_char('d').all()).parse(&c));
+    println!("2->: {:?}", p.right(p_char('d')).parse(&c));
+    println!("3->: {:?}", p.right(p_char('d').all()).parse(&c));
     println!("4->: {:?}", p_char('d').parse(&c));
     println!("5->: {:?}", p_str("abcddefg").parse(&c));
     println!("6->: {:?}", p_str("abc").right(p_string()).parse(&c));
