@@ -12,13 +12,12 @@ pub enum Atom {
 
 type Name = String;
 type Env = HashMap<Name, (Vec<Name>, Value)>;
-type EnvBuildIn = HashMap<Name, (Vec<Name>, Box<Fn(Vec<Value>) -> Value>)>;
 
 #[derive(Debug, Clone)]
 pub enum Value {
     Atom(Atom),
-    List(Box<Value>),
-    Fun(Vec<Name>, Expr),
+//    List(Box<Value>), //not in use yet
+//    Fun(Vec<Name>, Expr), //not in use yet
 }
 
 //fix signature to use &str
@@ -38,10 +37,10 @@ pub fn eval<'a, 'b>(expr: &'b Expr) -> Result<Value, &'a str> {
             }
             Expr::EList(ref name, ref vals) => {
                 let vals = vals.iter()
-                    .map(|v| eval(&v, env.clone()))
+                    .map(|v| eval(v, env.clone()))
                     .collect::<Result<Vec<_>, _>>()?;
 
-                fn i64_calc<'a, F>(f: F, zero: i64, vals: &Vec<Value>) -> Result<Value, &'a str>
+                fn i64_calc<'a, F>(f: F, zero: i64, vals: &[Value]) -> Result<Value, &'a str>
                 where
                     F: Fn(i64, i64) -> i64,
                 {
@@ -68,5 +67,5 @@ pub fn eval<'a, 'b>(expr: &'b Expr) -> Result<Value, &'a str> {
         }
     }
 
-    eval(&expr, HashMap::new())
+    eval(expr, HashMap::new())
 }
