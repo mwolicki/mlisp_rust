@@ -53,36 +53,39 @@ where
     })
 }
 
-pub struct LeftParser<'a, A, B>
-where
-    A: Parser<'a>,
-    B: Parser<'a>,
-{
-    left: A,
-    right: B,
-    phantom: PhantomData<&'a i8>,
-}
 
-impl<'a, A, ARet, B> Parser<'a> for LeftParser<'a, A, B>
+pub fn left<'a, A, ARet, B, BRet>(left: A, right: B) -> RcParser<'a, ARet>
 where
     A: Parser<'a, Return = ARet> + 'a,
-    B: Parser<'a> + 'a,
+    B: Parser<'a, Return = BRet> + 'a,
+    ARet: 'a,
 {
-    type Return = ARet;
-    fn parse(&self, txt: &'a [char]) -> ParseResult<'a, Self::Return> {
-        let a_corr = self.left.parse(txt)?;
-        let b_corr = self.right.parse(a_corr.txt)?;
+    LambdaParser::create(move |txt| {
+        let a_corr = left.parse(txt)?;
+        let b_corr = right.parse(a_corr.txt)?;
         Ok(Corr {
             txt: b_corr.txt,
             res: a_corr.res,
         })
-    }
-
-    fn as_rc(self) -> RcParser<'a, Self::Return> {
-        Rc::new(self)
-    }
+    })
 }
 
+
+pub fn right<'a, A, ARet, B, BRet>(left: A, right: B) -> RcParser<'a, BRet>
+where
+    A: Parser<'a, Return = ARet> + 'a,
+    B: Parser<'a, Return = BRet> + 'a,
+    BRet: 'a,
+{
+    LambdaParser::create(move |txt| {
+        let a_corr = left.parse(txt)?;
+        let b_corr = right.parse(a_corr.txt)?;
+        Ok(Corr {
+            txt: b_corr.txt,
+            res: b_corr.res,
+        })
+    })
+}
 
 pub struct MapParser<'a, Out, Fun, A, ARet>
 where
@@ -115,36 +118,6 @@ where
             }
             Err(e) => Err(e),
         }
-    }
-
-    fn as_rc(self) -> RcParser<'a, Self::Return> {
-        Rc::new(self)
-    }
-}
-
-pub struct RightParser<'a, A, B>
-where
-    A: Parser<'a> + 'a,
-    B: Parser<'a> + 'a,
-{
-    left: A,
-    right: B,
-    phantom: PhantomData<&'a i8>,
-}
-
-impl<'a, A, B, RetB> Parser<'a> for RightParser<'a, A, B>
-where
-    A: Parser<'a> + 'a,
-    B: Parser<'a, Return = RetB> + 'a,
-{
-    type Return = RetB;
-    fn parse(&self, txt: &'a [char]) -> ParseResult<'a, Self::Return> {
-        let a_corr = self.left.parse(txt)?;
-        let b_corr = self.right.parse(a_corr.txt)?;
-        Ok(Corr {
-            txt: b_corr.txt,
-            res: b_corr.res,
-        })
     }
 
     fn as_rc(self) -> RcParser<'a, Self::Return> {
@@ -321,12 +294,7 @@ pub trait Parser<'a> {
         B: Parser<'a, Return = BRet> + 'a,
         Self: Sized + 'a,
     {
-        as_rc(LeftParser {
-            left: self,
-            right,
-            phantom: PhantomData,
-        })
-
+        left(self, right)
     }
 
     fn map<Fun, Out>(self, map: Fun) -> RcParser<'a, Out>
@@ -342,16 +310,13 @@ pub trait Parser<'a> {
         })
     }
 
-    fn right<B, BRet>(self, right: B) -> RcParser<'a, BRet>
+    fn right<B, BRet>(self, right_parser: B) -> RcParser<'a, BRet>
     where
         B: Parser<'a, Return = BRet> + 'a,
         Self: std::marker::Sized + 'a,
+        BRet: 'a,
     {
-        as_rc(RightParser {
-            left: self,
-            right,
-            phantom: PhantomData,
-        })
+        right(self, right_parser)
     }
 
     fn all(self) -> RcParser<'a, Vec<Self::Return>>
