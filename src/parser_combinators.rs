@@ -32,34 +32,18 @@ impl<'a> Parser<'a> for CharParser {
     }
 }
 
-pub struct StringParser<'a> {
-    txt: &'a str,
+pub fn parse_string<'a>(string: &'a str) -> RcParser<'a, &'a str> {
+    let s: Vec<char> = string.chars().collect();
+    LambdaParser::create(move |txt| if txt.starts_with(&s) {
+        let corr = Corr {
+            txt: &txt[s.len()..],
+            res: string,
+        };
+        Ok(corr)
+    } else {
+        Err(("no char", txt))
+    })
 }
-
-pub fn parse_string<'a>(s: &'a str) -> StringParser<'a> {
-    StringParser { txt: s }
-}
-
-impl<'a> Parser<'a> for StringParser<'a> {
-    type Return = &'a str;
-    fn parse(&self, txt: &'a [char]) -> ParseResult<'a, &'a str> {
-        let s: Vec<char> = self.txt.chars().collect();
-        if txt.starts_with(&s) {
-            let corr = Corr {
-                txt: &txt[s.len()..],
-                res: self.txt,
-            };
-            Ok(corr)
-        } else {
-            Err(("no char", txt))
-        }
-    }
-
-    fn as_rc(self) -> RcParser<'a, Self::Return> {
-        Rc::new(self)
-    }
-}
-
 
 
 pub fn parse_char<'a>(ch: char) -> RcParser<'a, char> {
