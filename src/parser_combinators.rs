@@ -12,24 +12,15 @@ pub struct Corr<'a, T> {
 
 pub type ParseResult<'a, T> = Result<Corr<'a, T>, (&'a str, &'a [char])>;
 
-#[derive(Debug)]
-pub struct CharParser(char);
-
-impl<'a> Parser<'a> for CharParser {
-    type Return = char;
-    fn parse(&self, txt: &'a [char]) -> ParseResult<'a, char> {
-        if !txt.is_empty() && txt[0] == self.0 {
-            Ok(Corr {
-                txt: &txt[1..],
-                res: self.0,
-            })
-        } else {
-            Err(("no char", txt))
-        }
-    }
-    fn as_rc(self) -> RcParser<'a, Self::Return> {
-        Rc::new(self)
-    }
+pub fn parse_char<'a>(ch: char) -> RcParser<'a, char> {
+    LambdaParser::create(move |txt| if !txt.is_empty() && txt[0] == ch {
+        Ok(Corr {
+            txt: &txt[1..],
+            res: ch,
+        })
+    } else {
+        Err(("no char", txt))
+    })
 }
 
 pub fn parse_string<'a>(string: &'a str) -> RcParser<'a, &'a str> {
@@ -43,11 +34,6 @@ pub fn parse_string<'a>(string: &'a str) -> RcParser<'a, &'a str> {
     } else {
         Err(("no char", txt))
     })
-}
-
-
-pub fn parse_char<'a>(ch: char) -> RcParser<'a, char> {
-    as_rc(CharParser(ch))
 }
 
 pub struct BothParser<'a, A, B>
