@@ -32,40 +32,26 @@ pub fn parse_string<'a>(string: &'a str) -> RcParser<'a, &'a str> {
         };
         Ok(corr)
     } else {
-        Err(("no char", txt))
+        Err(("no str", txt))
     })
 }
 
-pub struct BothParser<'a, A, B>
-where
-    A: Parser<'a>,
-    B: Parser<'a>,
-{
-    left: A,
-    right: B,
-    phantom: PhantomData<&'a i8>,
-}
-
-impl<'a, A, ARet, B, BRet> Parser<'a> for BothParser<'a, A, B>
+pub fn both<'a, A, ARet, B, BRet>(left: A, right: B) -> RcParser<'a, (ARet, BRet)>
 where
     A: Parser<'a, Return = ARet> + 'a,
     B: Parser<'a, Return = BRet> + 'a,
+    ARet: 'a,
+    BRet: 'a,
 {
-    type Return = (ARet, BRet);
-    fn parse(&self, txt: &'a [char]) -> ParseResult<'a, Self::Return> {
-        let a_corr = self.left.parse(txt)?;
-        let b_corr = self.right.parse(a_corr.txt)?;
+    LambdaParser::create(move |txt| {
+        let a_corr = left.parse(txt)?;
+        let b_corr = right.parse(a_corr.txt)?;
         Ok(Corr {
             txt: b_corr.txt,
             res: (a_corr.res, b_corr.res),
         })
-    }
-
-    fn as_rc(self) -> RcParser<'a, Self::Return> {
-        Rc::new(self)
-    }
+    })
 }
-
 
 pub struct LeftParser<'a, A, B>
 where
@@ -325,12 +311,9 @@ pub trait Parser<'a> {
     where
         Self: Sized + 'a,
         B: Parser<'a, Return = BRet> + 'a,
+        BRet: 'a,
     {
-        as_rc(BothParser {
-            left: self,
-            right,
-            phantom: PhantomData,
-        })
+        both(self, right)
     }
 
     fn left<B, BRet>(self, right: B) -> RcParser<'a, Self::Return>
