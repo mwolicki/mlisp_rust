@@ -72,14 +72,24 @@ pub fn eval<'a, 'b>(expr: &'b Expr) -> Result<Value, &'a str> {
 }
 
 
-fn s(txt: &str) -> Vec<char> {
-    txt.chars().collect::<Vec<char>>()
+fn s<'a>(txt: &'a str) -> Result<Value, &'a str> {
+    parse(&txt.chars().collect::<Vec<char>>())
+        .map(|x| eval(&x.res))
+        .unwrap()
 }
 
 #[test]
-fn eval_test() {
+fn eval_test1() {
+    assert_eq!(s("(+ (* 2 2) 2 3 )"), Ok(Value::Atom(Atom::Int(9))));
+}
+
+#[test]
+fn eval_test2() {
     assert_eq!(
-        parse(&s("(+ (* 2 2) 2 3 )")).map(|x| eval(&x.res)),
-        Ok(Ok(Value::Atom(Atom::Int(9))))
+        s(
+            "(+           
+                 (add 1 2 3)    1 2 (/ 1 2 3)    1 2)",
+        ),
+        Ok(Value::Atom(Atom::Int(12)))
     );
 }
