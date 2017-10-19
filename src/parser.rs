@@ -5,25 +5,25 @@ pub fn parse<'a>(txt: &'a [char]) -> ParseResult<Vec<Expr>> {
     let quote_mark = p_char('"');
     let expr = refl_parser(|expr| {
         let expr_impl = vec![
-            p_int().map(Expr::EInt),
-            quote_mark.right(p_string().map(Expr::EStr)).left(
+            p_int().map(Expr::Int),
+            quote_mark.right(p_string().map(Expr::Str)).left(
                 quote_mark
             ),
 
-            p_string().map(Expr::EIdent),
+            p_string().map(Expr::Ident),
 
             p_char('(')
                 .right(spaces().right(p_string().left(spaces())))
                 .both(all(spaces().right(expr).left(spaces())))
-                .map(|(hd, tl)| Expr::EList(hd, tl))
+                .map(|(hd, tl)| Expr::List(hd, Box::new(tl)))
                 .left(p_char(')')),
 
             p_char('(')
                 .right(spaces().right(p_string().left(spaces())))
-                .map(|hd| Expr::EList(hd, Vec::new()))
+                .map(|hd| Expr::List(hd, Box::new(Vec::new())))
                 .left(p_char(')')),
         ];
-        
+
 
         spaces().right(any(expr_impl).left(spaces()))
     });
