@@ -41,9 +41,9 @@ impl fmt::Display for Value {
         match self {
             &Value::Atom(ref i) => write!(f, "{}", i),
             &Value::List(ref items) => {
-                write!(f, "(");
+                write!(f, "(")?;
                 for i in items.iter() {
-                    write!(f, " {} ", i);
+                    write!(f, " {} ", i)?;
                 }
                 write!(f, ")")},
             &Value::Fun(_, _) => write!(f, "##fun##"),
