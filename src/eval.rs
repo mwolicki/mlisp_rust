@@ -1,8 +1,9 @@
 use std::collections::HashMap;
 use expr::Expr;
 use parser::parse;
+use std::fmt;
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Clone, PartialEq)]
 pub enum Atom {
     Int(i64),
     String(String),
@@ -11,17 +12,46 @@ pub enum Atom {
     Unit,
 }
 
+impl fmt::Display for Atom {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            &Atom::Int(i) => write!(f, "{}", i),
+            &Atom::String(ref i) => write!(f, "\"{}\"", i),
+            &Atom::Ident(ref i) => write!(f, "{}", i),
+            &Atom::Bool(i) => write!(f, "{}", i),
+            &Atom::Unit => write!(f, "unit"),
+        }
+    }
+}
+
 type ArgName = Name;
 
 type Name = String;
 type Env = HashMap<Name, Value>;
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Clone, PartialEq)]
 pub enum Value {
     Atom(Atom),
     List(Box<Vec<Value>>), 
     Fun(Vec<ArgName>, Expr),
 }
+
+impl fmt::Display for Value {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            &Value::Atom(ref i) => write!(f, "{}", i),
+            &Value::List(ref items) => {
+                write!(f, "(");
+                for i in items.iter() {
+                    write!(f, " {} ", i);
+                }
+                write!(f, ")")},
+            &Value::Fun(_, _) => write!(f, "##fun##"),
+        }
+    }
+}
+
+
 
 //fix signature to use &str
 pub fn eval<'a, 'b>(exprs: &'b Vec<Expr>) -> Result<(Value, Env), &'a str> {
@@ -89,6 +119,7 @@ pub fn eval<'a, 'b>(exprs: &'b Vec<Expr>) -> Result<(Value, Env), &'a str> {
                     "-" | "sub" => i64_calc(|a, b| a - b, 0, &vals),
                     "/" | "div" => i64_calc(|a, b| a / b, 1, &vals),
                     "*" | "mul" => i64_calc(|a, b| a * b, 1, &vals),
+                    "list" => Ok(Value::List(Box::new(vals))),
                     name if env.contains_key(name) =>{
                         let val = env[name].clone();
                         match val {
