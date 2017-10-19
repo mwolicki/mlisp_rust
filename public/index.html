@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta http-equiv='Content-Type' content='text/html; charset=utf-8'>
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <title>μLISP interpreter</title>
+  <!-- Latest compiled and minified CSS -->
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u"
+    crossorigin="anonymous">
+
+  <!-- Optional theme -->
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap-theme.min.css" integrity="sha384-rHyoN1iRsVXV4nD0JutlnGaslCJuC7uwjduW9SVrLvRYooPp2bWYgmgJQIXwl/Sp"
+    crossorigin="anonymous">
+
+  <script src="https://code.jquery.com/jquery-3.2.1.min.js" integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4="
+    crossorigin="anonymous"></script>
+  <!-- Latest compiled and minified JavaScript -->
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa"
+    crossorigin="anonymous"></script>
+  <style>
+    body {
+      padding-bottom: 2rem;
+      padding-right: 2rem;
+      padding-left: 2rem;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="container">
+    <div class="row">
+      <h1>μLISP interpreter</h1>
+      <p>source
+        code <a href="https://github.com/mwolicki/mlisp_rust">https://github.com/mwolicki/mlisp_rust</a>
+      </p> 
+      <textarea id="textarea-code" rows="10" class="form-control">
+(define addTwoNumbers (a b) (+ a b))
+(define add2 (z) (addTwoNumbers 2 z))
+(define x (* 10 (+ 1 2 3 (add2 10))))
+(+ 1 2 (add2 5) x)
+        </textarea>
+
+    </div>
+    <div class="row">
+      <h4>Result</h4>
+      <pre id="results"></pre>
+    </div>
+    <div class="row" style="align-content: right">
+      <button id="button" type="Button" class="btn btn-success" disabled="disabled">Run!</button>
+    </div>
+</body>
+
+</html>
+
+
+<script type='text/javascript'>
+  let run_button = document.getElementById("button")
+  let textarea_code = document.getElementById("textarea-code")
+  let results = document.getElementById("results")
+
+  function forceRedraw(element) {
+    let current_display = element.style.display;
+    element.style.display = 'none';
+    let trick = element.offsetHeight;
+    element.style.display = current_display;
+  };
+
+  var Module = {
+    postRun: [function () {
+      eval_code()
+      run_button.disabled = false
+    }],
+    noExitRuntime: true,
+    print: (function () {
+      return function (text) {
+        console.log(text);
+      };
+    })(),
+    printErr: function (text) {
+      results.innerHTML += "<br/><br/>ERROR: " + text
+      console.error(text)
+    },
+  };
+
+
+  function eval_code() {
+    let str = textarea_code.value
+    let startTime = new Date();
+    let f = Module.cwrap('js_run_code', 'string', ['string'])
+
+    let result = f(str)
+    let elapsed = new Date() - startTime
+    results.innerText = result + "\r\n\r\nElapsed time: " + elapsed + "ms";
+  }
+
+  run_button.onclick = eval_code
+</script>
+<script type="text/javascript" src="mlisp.js"></script>

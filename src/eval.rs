@@ -19,12 +19,12 @@ type Env = HashMap<Name, Value>;
 #[derive(Debug, Clone, PartialEq)]
 pub enum Value {
     Atom(Atom),
-    List(Box<Vec<Value>>), //not in use yet
-    Fun(Vec<ArgName>, Expr), //not in use yet
+    List(Box<Vec<Value>>), 
+    Fun(Vec<ArgName>, Expr),
 }
 
 //fix signature to use &str
-pub fn eval<'a, 'b>(expr: &'b Expr) -> Result<Value, &'a str> {
+pub fn eval<'a, 'b>(exprs: &'b Vec<Expr>) -> Result<(Value, Env), &'a str> {
 
     fn eval<'a, 'b>(expr: &'b Expr, env: &mut Env) -> Result<Value, &'a str> {
         match *expr {
@@ -89,6 +89,23 @@ pub fn eval<'a, 'b>(expr: &'b Expr) -> Result<Value, &'a str> {
                     "-" | "sub" => i64_calc(|a, b| a - b, 0, &vals),
                     "/" | "div" => i64_calc(|a, b| a / b, 1, &vals),
                     "*" | "mul" => i64_calc(|a, b| a * b, 1, &vals),
+                    name if env.contains_key(name) =>{
+                        let val = env[name].clone();
+                        match val {
+                            Value::Atom(_) => Ok(val),
+                            Value::List(_) => Ok(val),
+                            Value::Fun(ref names, ref expr) if names.len() == vals.len() => {
+                                let mut env = env.clone();
+
+                                for (name, val) in names.iter().zip(vals) {
+                                    env.insert(name.to_owned(), val);
+                                }
+
+                                eval(&expr.clone(), &mut env)
+                            },
+                            _ => Err("undefinde var")
+                        }
+                    },
                     _ => {
                         let mut atoms = Vec::with_capacity(vals.len());
                         atoms.push(Value::Atom(Atom::Ident(name.to_owned())));
@@ -101,14 +118,15 @@ pub fn eval<'a, 'b>(expr: &'b Expr) -> Result<Value, &'a str> {
             }
         }
     }
-
-    eval(expr, &mut HashMap::new())
+    let mut env = HashMap::new();
+    exprs.iter().fold(Ok(Value::Atom(Atom::Unit)), |_, expr| eval(expr, &mut env)).map(|x| (x, env))
+    
 }
 
 
 fn s<'a>(txt: &'a str) -> Result<Value, &'a str> {
     parse(&txt.chars().collect::<Vec<char>>())
-        .map(|x| eval(&x.res))
+        .map(|x| eval(&x.res).map(|(x,_)| x))
         .unwrap()
 }
 
@@ -124,4 +142,9 @@ fn eval_test() {
         ),
         Ok(Value::Atom(Atom::Int(12)))
     );
+
+    assert_eq!(s("(define add2 (a) (+ a 2))
+                  (define nine 9)
+                  (add2 nine)"), Ok(Value::Atom(Atom::Int(11))));
+    
 }
