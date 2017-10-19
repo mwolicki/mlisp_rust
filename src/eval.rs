@@ -10,7 +10,7 @@ pub fn eval<'a, 'b>(exprs: &'b Vec<Expr>) -> Result<(Expr, Env), &'a str> {
 
     fn eval<'a, 'b>(expr: &'b Expr, env: &mut Env) -> Result<Expr, &'a str> {
         match *expr {
-            Expr::Fun(_,_) | Expr::QuotedList(_) | Expr::Bool(_) | Expr::Unit | Expr::Int(_) | Expr::Str(_) => Ok(expr.clone()),
+            Expr::Symbol(_) | Expr::Fun(_,_) | Expr::QuotedList(_) | Expr::Bool(_) | Expr::Unit | Expr::Int(_) | Expr::Str(_) => Ok(expr.clone()),
             Expr::Ident(ref val) => {
                 match val.as_str() {
                     "true" | "#t" => Ok(Expr::Bool(true)),
@@ -108,15 +108,13 @@ pub fn eval<'a, 'b>(exprs: &'b Vec<Expr>) -> Result<(Expr, Env), &'a str> {
     
 }
 
-
-fn s<'a>(txt: &'a str) -> Result<Expr, &'a str> {
-    parse(&txt.chars().collect::<Vec<char>>())
-        .map(|x| eval(&x.res).map(|(x,_)| x))
-        .unwrap()
-}
-
 #[test]
 fn eval_test() {
+    fn s<'a>(txt: &'a str) -> Result<Expr, &'a str> {
+        parse(&txt.chars().collect::<Vec<char>>())
+            .map(|x| eval(&x.res).map(|(x,_)| x))
+            .unwrap()
+    }
     assert_eq!(s("(+ (* 2 2) 2 3 )"), Ok(Expr::Int(9)));
     assert_eq!(s("(list (list 5 6) 7)"), Ok(Expr::QuotedList(
             Box::new(vec!(Expr::QuotedList(
@@ -124,6 +122,8 @@ fn eval_test() {
     assert_eq!(s("(quote (+ 1 2))"), Ok(Expr::List(String::from("+"),
             Box::new(vec!(Expr::Int(1), Expr::Int(2))))));
     assert_eq!(s("(define x 1)"), Ok(Expr::Unit));
+    assert_eq!(s("(define x 'abc)
+                  x"), Ok(Expr::Symbol(String::from("abc"))));
     assert_eq!(s("(define add2 (a) (+ a 2))"), Ok(Expr::Unit));
     assert_eq!(
         s(

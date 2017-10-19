@@ -8,6 +8,7 @@ pub enum Expr {
     Int(i64),
     Str(String),
     Bool(bool),
+    Symbol(String),
     Unit,
     Ident(Ident),
     List(Ident, Box<Vec<Expr>>),
@@ -22,6 +23,7 @@ impl fmt::Display for Expr {
         match self {
             &Expr::Int(i) => write!(f, "{}", i),
             &Expr::Str(ref i) => write!(f, "\"{}\"", i),
+            &Expr::Symbol(ref i) => write!(f, "{}", i),
             &Expr::Ident(ref i) => write!(f, "{}", i),
             &Expr::Bool(i) => write!(f, "{}", i),
             &Expr::Unit => write!(f, "unit"),

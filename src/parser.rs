@@ -10,6 +10,7 @@ pub fn parse<'a>(txt: &'a [char]) -> ParseResult<Vec<Expr>> {
                 quote_mark
             ),
 
+            p_char('\'').right(p_string()).map(Expr::Symbol),
             p_string().map(Expr::Ident),
 
             p_char('(')
