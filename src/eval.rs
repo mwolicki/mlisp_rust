@@ -113,14 +113,10 @@ fn s<'a>(txt: &'a str) -> Result<Value, &'a str> {
 }
 
 #[test]
-fn eval_test1() {
+fn eval_test() {
     assert_eq!(s("(+ (* 2 2) 2 3 )"), Ok(Value::Atom(Atom::Int(9))));
     assert_eq!(s("(define x 1)"), Ok(Value::Atom(Atom::Unit)));
     assert_eq!(s("(define add2 (a) (+ a 2))"), Ok(Value::Atom(Atom::Unit)));
-}
-
-#[test]
-fn eval_test2() {
     assert_eq!(
         s(
             "(+           
