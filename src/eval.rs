@@ -62,8 +62,8 @@ pub fn eval<'a, 'b>(exprs: &'b Vec<Expr>) -> Result<(Value, Env), &'a str> {
             Expr::EStr(ref val) => Ok(Value::Atom(Atom::String(val.clone()))),
             Expr::EIdent(ref val) => {
                 match val.as_str() {
-                    "true" => Ok(Value::Atom(Atom::Bool(true))),
-                    "false" => Ok(Value::Atom(Atom::Bool(false))),
+                    "true" | "#t" => Ok(Value::Atom(Atom::Bool(true))),
+                    "false" | "#f" => Ok(Value::Atom(Atom::Bool(false))),
                     "unit" => Ok(Value::Atom(Atom::Unit)),
                     _ if env.contains_key(val) => Ok(env[val].clone()),
                     _ => Ok(Value::Atom(Atom::Ident(val.clone()))),
