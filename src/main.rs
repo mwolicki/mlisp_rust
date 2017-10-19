@@ -1,3 +1,5 @@
+#![feature(slice_patterns)]
+
 mod parser_combinators;
 mod parser;
 mod expr;

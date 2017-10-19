@@ -17,6 +17,11 @@ pub fn parse<'a>(txt: &'a [char]) -> ParseResult<Expr> {
                 .both(all(spaces().right(expr).left(spaces())))
                 .map(|(hd, tl)| Expr::EList(hd, tl))
                 .left(p_char(')')),
+
+            p_char('(')
+                .right(spaces().right(p_string().left(spaces())))
+                .map(|hd| Expr::EList(hd, Vec::new()))
+                .left(p_char(')')),
         ];
 
         any(expr_impl)
