@@ -33,7 +33,7 @@ pub fn eval<'a, 'b>(exprs: &'b Vec<Expr>) -> Result<(Expr, Env), &'a str> {
                             .map(|x| if let Expr::Ident(ref v) = *x {
                                 Ok(v.to_owned())
                             } else {
-                                Err("expected int")
+                                Err("expected ident")
                             })
                             .collect::<Result<Vec<_>, _>>()?;
                         args.insert(0, first_arg.to_owned());
@@ -50,12 +50,11 @@ pub fn eval<'a, 'b>(exprs: &'b Vec<Expr>) -> Result<(Expr, Env), &'a str> {
                             .map(|x| if let Expr::Ident(ref v) = *x {
                                 Ok(v.to_owned())
                             } else {
-                                Err("expected int")
+                                Err("expected ident")
                             })
                             .collect::<Result<Vec<_>, _>>()?;
                         args.insert(0, first_arg.to_owned());
-                        env.insert(name.to_owned(), Expr::Fun(args, Box::new(func.clone())));
-                        Ok(Expr::Unit)
+                        Ok(Expr::Fun(args, Box::new(func.clone())))
                     }
                     _ => Err("cannot define lambda"),
                 }
@@ -225,4 +224,7 @@ fn eval_test() {
     1
     (+ (fib (sub1 a)) (fib (sub2 a)))))
 (fib 8)"), Ok(Expr::Int(21)));
+
+
+    assert_eq!(s("(define id (lambda (a) a)) (id 42)"), Ok(Expr::Int(42)));
 }

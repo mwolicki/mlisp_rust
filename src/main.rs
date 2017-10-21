@@ -15,12 +15,7 @@ fn main() {
             .unwrap()
     }
 
-    assert_eq!(s("(define fib (a)
-        (if (eq? a 0) 
-            1
-            (if (eq? a 1) 1
-            (+ (fib (- a 1)) (fib (- a 2))))))
-        (fib 4)"), Ok(expr::Expr::Int(5)));
+    assert_eq!(s("(define id (lambda (a) a)) (id 42)"), Ok(expr::Expr::Int(42)));
 }
 
 
