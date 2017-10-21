@@ -45,7 +45,7 @@
     (+ (fib (sub1 a)) (fib (sub2 a)))))
 
 (define downto (from f)
-  (if (eq? 2 from) 
+  (if (eq? 1 from) 
       (f from)
       (append  (f from) (downto (sub1 from) f))))
 
