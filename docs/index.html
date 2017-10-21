@@ -43,18 +43,20 @@
         code <a href="https://github.com/mwolicki/mlisp_rust">https://github.com/mwolicki/mlisp_rust</a>
       </p> 
       <textarea id="textarea-code" rows="15" class="form-control">
-(define sub1 (z) (- z 1)) (define sub2 (z) (- z 2))
+(define sub1 (lambda (z) (- z 1))) (define sub2 (z) (- z 2))
 (define or (a b) (if a true (if b true false)))
+
+(define fib (a)
+  (if (or (eq? a 1) (eq? a 2))
+    1
+    (+ (fib (sub1 a)) (fib (sub2 a)))))
 
 (define downto (from f)
   (if (eq? 1 from) 
       (f from)
       (append  (f from) (downto (sub1 from) f))))
 
-(downto 7 (lambda (fib)
-  (if (or (eq? fib 1) (eq? fib 2))
-    1
-    (+ (fib (sub1 fib)) (fib (sub2 fib))))))
+(downto 7 fib)
 </textarea>
 <script>
   let editor = CodeMirror.fromTextArea(document.getElementById("textarea-code"), {
