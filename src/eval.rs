@@ -43,6 +43,23 @@ pub fn eval<'a, 'b>(exprs: &'b Vec<Expr>) -> Result<(Expr, Env), &'a str> {
                     _ => Err("cannot define var/function"),
                 }
             },
+            Expr::List(ref name, ref values) if name == "lambda" => {
+                match values.as_slice() {
+                    &[Expr::List(ref first_arg, ref tail_args), ref func] => {
+                        let mut args = tail_args.iter()
+                            .map(|x| if let Expr::Ident(ref v) = *x {
+                                Ok(v.to_owned())
+                            } else {
+                                Err("expected int")
+                            })
+                            .collect::<Result<Vec<_>, _>>()?;
+                        args.insert(0, first_arg.to_owned());
+                        env.insert(name.to_owned(), Expr::Fun(args, Box::new(func.clone())));
+                        Ok(Expr::Unit)
+                    }
+                    _ => Err("cannot define lambda"),
+                }
+            },
             Expr::List(ref name, ref values) if name == "if" => {
                 match values.as_slice() {
                     &[ref pattern, ref lhs, ref rhs] => {
@@ -62,7 +79,7 @@ pub fn eval<'a, 'b>(exprs: &'b Vec<Expr>) -> Result<(Expr, Env), &'a str> {
                     .map(|v| eval(v, env))
                     .collect::<Result<Vec<_>, _>>()?;
 
-                fn i64_calc<'a, F>(f: F, zero: i64, vals: &[Expr]) -> Result<Expr, &'a str>
+                fn i64_calc<'a, F>(f: F, vals: &[Expr]) -> Result<Expr, &'a str>
                 where
                     F: Fn(i64, i64) -> i64,
                 {
@@ -73,14 +90,19 @@ pub fn eval<'a, 'b>(exprs: &'b Vec<Expr>) -> Result<(Expr, Env), &'a str> {
                             Err("expected int")
                         })
                         .collect::<Result<Vec<_>, _>>()?;
-                    Ok(Expr::Int(i.iter().fold(zero, |acc, &x| f(acc, x))))
+                    if let Some(init) = i.get(0) {
+                        Ok(Expr::Int(i.iter().skip(1).fold(*init, |acc, &x| f(acc, x))))
+                    }
+                    else{
+                        Err("expected at least one parameter.")
+                    }
                 };
 
                 match name.as_str() {
-                    "+" | "add" => i64_calc(|a, b| a + b, 0, &vals),
-                    "-" | "sub" => i64_calc(|a, b| a - b, 0, &vals),
-                    "/" | "div" => i64_calc(|a, b| a / b, 1, &vals),
-                    "*" | "mul" => i64_calc(|a, b| a * b, 1, &vals),
+                    "+" | "add" => i64_calc(|a, b| a + b, &vals),
+                    "-" | "sub" => i64_calc(|a, b| a - b, &vals),
+                    "/" | "div" => i64_calc(|a, b| a / b, &vals),
+                    "*" | "mul" => i64_calc(|a, b| a * b, &vals),
                     "list" => Ok(Expr::QuotedList(Box::new(vals))),
                     "eq?" => {
                         if vals.len() == 0 {
@@ -110,8 +132,8 @@ pub fn eval<'a, 'b>(exprs: &'b Vec<Expr>) -> Result<(Expr, Env), &'a str> {
                             Expr::Fun(ref names, ref expr) if names.len() == vals.len() => {
                                 let mut env = env.clone();
 
-                                for (name, val) in names.iter().zip(vals) {
-                                    env.insert(name.to_owned(), val);
+                                for (n, val) in names.iter().zip(vals) {                     
+                                    env.insert(n.to_owned(), val);
                                 }
 
                                 eval(&expr.clone(), &mut env)
@@ -170,5 +192,23 @@ fn eval_test() {
     assert_eq!(s("(define add2 (a) (+ a 2))
                   (define nine 9)
                   (add2 nine)"), Ok(Expr::Int(11)));
+
+    assert_eq!(s("(define fib (a)
+     (if (eq? a 0) 
+         0
+         (if (eq? a 1) 1
+         (+ (fib (- a 1)) (fib (- a 2))))))"), Ok(Expr::Unit));
+
+    assert_eq!(s("(define fib (a)
+     (if (eq? a 0) 
+         1
+         (if (eq? a 1) 1
+         (+ (fib (- a 1)) (fib (- a 2))))))
+    (fib 4)"), Ok(Expr::Int(5)));
+
+
+
+
+    
     
 }

@@ -9,7 +9,18 @@ use std::ffi::CString;
 use std::os::raw::c_char;
 
 fn main() {
+    fn s<'a>(txt: &'a str) -> Result<expr::Expr, &'a str> {
+        parser::parse(&txt.chars().collect::<Vec<char>>())
+            .map(|x| eval::eval(&x.res).map(|(x,_)| x))
+            .unwrap()
+    }
 
+    assert_eq!(s("(define fib (a)
+        (if (eq? a 0) 
+            1
+            (if (eq? a 1) 1
+            (+ (fib (- a 1)) (fib (- a 2))))))
+        (fib 4)"), Ok(expr::Expr::Int(5)));
 }
 
 
