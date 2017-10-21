@@ -44,6 +44,12 @@
     1
     (+ (fib (sub1 a)) (fib (sub2 a)))))
 (fib 4)
+(define downto (from f)
+    (if (eq? 2 from) 
+        (f from)
+        (append  (f from) (downto (sub1 from) f))))
+
+(downto 7 fib)
         </textarea>
 
     </div>

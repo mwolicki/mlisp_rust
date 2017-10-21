@@ -104,6 +104,21 @@ pub fn eval<'a, 'b>(exprs: &'b Vec<Expr>) -> Result<(Expr, Env), &'a str> {
                     "/" | "div" => i64_calc(|a, b| a / b, &vals),
                     "*" | "mul" => i64_calc(|a, b| a * b, &vals),
                     "list" => Ok(Expr::QuotedList(Box::new(vals))),
+                    "append" => {
+                        match vals.as_slice(){
+                            &[ref v, Expr::QuotedList(ref xs)] =>
+                                {
+                                    let mut xs = xs.clone();
+                                    xs.insert(0, v.clone());
+                                    Ok(Expr::QuotedList(xs))
+                                },
+                            &[ref lhs, ref rhs] =>
+                                {
+                                    Ok(Expr::QuotedList(Box::new(vec!(lhs.clone(), rhs.clone()))))
+                                },
+                            _ => Err("unsupported params for append")
+                        }
+                    },
                     "eq?" => {
                         if vals.len() == 0 {
                             Ok(Expr::Bool(true))
@@ -121,7 +136,14 @@ pub fn eval<'a, 'b>(exprs: &'b Vec<Expr>) -> Result<(Expr, Env), &'a str> {
                     },
                     "quote" => {
                         if values.len() == 1{
-                            Ok(values[0].clone())
+                            if let Expr::List(ref id, ref vals) = values[0] {
+                                let mut vals2 = vals.clone();
+                                vals2.insert(0, Expr::Ident(id.clone()));
+                                Ok(Expr::QuotedList(vals2))    
+                            }
+                            else{
+                                Ok(values[0].clone())
+                            }
                         }
                         else {
                             Ok(Expr::QuotedList(values.clone()))}
@@ -169,9 +191,11 @@ fn eval_test() {
     assert_eq!(s("(list (list 5 6) 7)"), Ok(Expr::QuotedList(
             Box::new(vec!(Expr::QuotedList(
                 Box::new(vec!(Expr::Int(5), Expr::Int(6)))), Expr::Int(7))))));
-    assert_eq!(s("(quote (+ 1 2))"), Ok(Expr::List(String::from("+"),
-            Box::new(vec!(Expr::Int(1), Expr::Int(2))))));
+    assert_eq!(s("(quote (+ 1 2))"), Ok(Expr::QuotedList(
+            Box::new(vec!(Expr::Ident(String::from("+")), Expr::Int(1), Expr::Int(2))))));
     assert_eq!(s("(define x 1)"), Ok(Expr::Unit));
+    assert_eq!(s("(append 1 (quote (+ 3))))"), Ok(Expr::QuotedList(
+        Box::new(vec!(Expr::Int(1), Expr::Ident(String::from("+")), Expr::Int(3))))));
     assert_eq!(s("(if (eq? 1 1) 5 (6 7))"), Ok(Expr::Int(5)));
     assert_eq!(s("(if (eq? 1 2) 5 \"abc\")"), Ok(Expr::Str(String::from("abc"))));
     assert_eq!(s("(eq? 1 1 1)"), Ok(Expr::Bool(true)));
