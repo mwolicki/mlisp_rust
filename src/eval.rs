@@ -193,22 +193,12 @@ fn eval_test() {
                   (define nine 9)
                   (add2 nine)"), Ok(Expr::Int(11)));
 
-    assert_eq!(s("(define fib (a)
-     (if (eq? a 0) 
-         0
-         (if (eq? a 1) 1
-         (+ (fib (- a 1)) (fib (- a 2))))))"), Ok(Expr::Unit));
-
-    assert_eq!(s("(define fib (a)
-     (if (eq? a 0) 
-         1
-         (if (eq? a 1) 1
-         (+ (fib (- a 1)) (fib (- a 2))))))
-    (fib 4)"), Ok(Expr::Int(5)));
-
-
-
-
-    
-    
+    assert_eq!(s("(define sub1 (z) (- z 1))
+(define sub2 (z) (- z 2))
+(define or (a b) (if a true (if b true false)))
+(define fib (a)
+(if (or (eq? a 1) (eq? a 2))
+    1
+    (+ (fib (sub1 a)) (fib (sub2 a)))))
+(fib 8)"), Ok(Expr::Int(21)));
 }

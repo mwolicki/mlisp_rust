@@ -40,7 +40,7 @@
 (define sub2 (z) (- z 2))
 (define or (a b) (if a true (if b true false)))
 (define fib (a)
-(if (or (eq? a 0) (eq? a 1))
+(if (or (eq? a 1) (eq? a 2))
     1
     (+ (fib (sub1 a)) (fib (sub2 a)))))
 (fib 4)
@@ -53,6 +53,7 @@
     </div>
     <div class="row" style="align-content: right">
       <button id="button" type="Button" class="btn btn-success" disabled="disabled">Run!</button>
+      <p id="ver" style="text-align: right"></p>
     </div>
 </body>
 
@@ -98,7 +99,7 @@
     let elapsed = new Date() - startTime
     results.innerText = result + "\r\n\r\nElapsed time: " + elapsed + "ms";
   }
-
+  document.getElementById("ver").innerText = "ver. " + document.lastModified
   run_button.onclick = eval_code
 </script>
 <script type="text/javascript" src="mlisp.js"></script>
