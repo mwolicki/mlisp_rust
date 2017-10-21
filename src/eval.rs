@@ -43,6 +43,19 @@ pub fn eval<'a, 'b>(exprs: &'b Vec<Expr>) -> Result<(Expr, Env), &'a str> {
                     _ => Err("cannot define var/function"),
                 }
             },
+            Expr::List(ref name, ref values) if name == "if" => {
+                match values.as_slice() {
+                    &[ref pattern, ref lhs, ref rhs] => {
+                        if eval(pattern, env)? == Expr::Bool(true) {
+                            eval(lhs, env)
+                        }
+                        else{
+                            eval(rhs, env)
+                        }
+                    }
+                    _ => Err("wrongly defined if"),
+                }
+            },
             Expr::List(ref name, ref values) => {
                 let vals = values
                     .iter()
@@ -69,6 +82,21 @@ pub fn eval<'a, 'b>(exprs: &'b Vec<Expr>) -> Result<(Expr, Env), &'a str> {
                     "/" | "div" => i64_calc(|a, b| a / b, 1, &vals),
                     "*" | "mul" => i64_calc(|a, b| a * b, 1, &vals),
                     "list" => Ok(Expr::QuotedList(Box::new(vals))),
+                    "eq?" => {
+                        if vals.len() == 0 {
+                            Ok(Expr::Bool(true))
+                        }
+                        else{
+                            let first = vals[0].clone();
+                            if vals.iter().all(|x| *x == first) {
+                                Ok(Expr::Bool(true))
+                            }
+                            else{
+                                Ok(Expr::Bool(false))
+                            }
+
+                        }
+                    },
                     "quote" => {
                         if values.len() == 1{
                             Ok(values[0].clone())
@@ -122,6 +150,12 @@ fn eval_test() {
     assert_eq!(s("(quote (+ 1 2))"), Ok(Expr::List(String::from("+"),
             Box::new(vec!(Expr::Int(1), Expr::Int(2))))));
     assert_eq!(s("(define x 1)"), Ok(Expr::Unit));
+    assert_eq!(s("(if (eq? 1 1) 5 (6 7))"), Ok(Expr::Int(5)));
+    assert_eq!(s("(if (eq? 1 2) 5 \"abc\")"), Ok(Expr::Str(String::from("abc"))));
+    assert_eq!(s("(eq? 1 1 1)"), Ok(Expr::Bool(true)));
+    assert_eq!(s("(eq? 1 2)"), Ok(Expr::Bool(false)));
+    assert_eq!(s("(eq? (1 2) (1 2) (1 2))"), Ok(Expr::Bool(true)));
+    assert_eq!(s("(eq? (1 2) (1 2) (1 1))"), Ok(Expr::Bool(false)));
     assert_eq!(s("(define x 'abc)
                   x"), Ok(Expr::Symbol(String::from("abc"))));
     assert_eq!(s("(define add2 (a) (+ a 2))"), Ok(Expr::Unit));
