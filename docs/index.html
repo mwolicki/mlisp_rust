@@ -35,19 +35,19 @@
       <p>source
         code <a href="https://github.com/mwolicki/mlisp_rust">https://github.com/mwolicki/mlisp_rust</a>
       </p> 
-      <textarea id="textarea-code" rows="10" class="form-control">
-(define sub1 (z) (- z 1))
-(define sub2 (z) (- z 2))
+      <textarea id="textarea-code" rows="15" class="form-control">
+(define sub1 (z) (- z 1)) (define sub2 (z) (- z 2))
 (define or (a b) (if a true (if b true false)))
+
 (define fib (a)
-(if (or (eq? a 1) (eq? a 2))
+  (if (or (eq? a 1) (eq? a 2))
     1
     (+ (fib (sub1 a)) (fib (sub2 a)))))
-(fib 4)
+
 (define downto (from f)
-    (if (eq? 2 from) 
-        (f from)
-        (append  (f from) (downto (sub1 from) f))))
+  (if (eq? 2 from) 
+      (f from)
+      (append  (f from) (downto (sub1 from) f))))
 
 (downto 7 fib)
         </textarea>
