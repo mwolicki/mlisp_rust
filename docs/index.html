@@ -59,7 +59,7 @@
 (downto 7 fib)
 </textarea>
 <script>
-  var editor = CodeMirror.fromTextArea(document.getElementById("textarea-code"), {
+  let editor = CodeMirror.fromTextArea(document.getElementById("textarea-code"), {
     lineNumbers: true,
     matchBrackets: true,
   });
@@ -109,14 +109,16 @@
 
 
   function eval_code() {
+    editor.save()
     let str = textarea_code.value
-    let startTime = new Date();
+    let startTime = new Date()
     let f = Module.cwrap('js_run_code', 'string', ['string'])
 
     let result = f(str)
     let elapsed = new Date() - startTime
-    results.innerText = result + "\r\n\r\nElapsed time: " + elapsed + "ms";
+    results.innerText = result + "\r\n\r\nElapsed time: " + elapsed + "ms"
   }
+  
   document.getElementById("ver").innerText = "ver. " + document.lastModified
   run_button.onclick = eval_code
 </script>

@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #export EMMAKEN_CFLAGS="--js-library external.js" 
--s \"BINARYEN_METHOD='native-wasm'\"
+#export EMMAKEN_CFLAGS="-s \"BINARYEN_METHOD='native-wasm'\""
 #rustc --target=wasm32-unknown-emscripten brainfuck.rs -O -o brainfuck.html 
 cargo +nightly test
 cargo +nightly build --target=wasm32-unknown-emscripten --release
