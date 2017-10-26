@@ -6,7 +6,7 @@ type Name = String;
 type Env = HashMap<Name, Expr>;
 
 //fix signature to use &str
-pub fn eval<'a, 'b>(exprs: &'b Vec<Expr>) -> Result<(Expr, Env), &'a str> {
+pub fn eval<'a, 'b>(exprs: &'b [Expr]) -> Result<(Expr, Env), &'a str> {
 
     fn eval<'a, 'b>(expr: &'b Expr, env: &mut Env) -> Result<Expr, &'a str> {
         match *expr {
@@ -21,14 +21,14 @@ pub fn eval<'a, 'b>(exprs: &'b Vec<Expr>) -> Result<(Expr, Env), &'a str> {
                 }
             }
             Expr::List(ref name, ref values) if name == "define" => {
-                match values.as_slice() {
-                    &[] => Err("cannot define <empty> of value <empty>"),
-                    &[Expr::Ident(ref name), ref val] => {
+                match *values.as_slice() {
+                    [] => Err("cannot define <empty> of value <empty>"),
+                    [Expr::Ident(ref name), ref val] => {
                         let definition = eval(val, env)?;
                         env.insert(name.to_owned(), definition);
                         Ok(Expr::Unit)
                     }
-                    &[Expr::Ident(ref name), Expr::List(ref first_arg, ref tail_args), ref func] => {
+                    [Expr::Ident(ref name), Expr::List(ref first_arg, ref tail_args), ref func] => {
                         let mut args = tail_args.iter()
                             .map(|x| if let Expr::Ident(ref v) = *x {
                                 Ok(v.to_owned())
@@ -44,8 +44,8 @@ pub fn eval<'a, 'b>(exprs: &'b Vec<Expr>) -> Result<(Expr, Env), &'a str> {
                 }
             },
             Expr::List(ref name, ref values) if name == "lambda" => {
-                match values.as_slice() {
-                    &[Expr::List(ref first_arg, ref tail_args), ref func] => {
+                match *values.as_slice() {
+                    [Expr::List(ref first_arg, ref tail_args), ref func] => {
                         let mut args = tail_args.iter()
                             .map(|x| if let Expr::Ident(ref v) = *x {
                                 Ok(v.to_owned())
@@ -60,8 +60,8 @@ pub fn eval<'a, 'b>(exprs: &'b Vec<Expr>) -> Result<(Expr, Env), &'a str> {
                 }
             },
             Expr::List(ref name, ref values) if name == "if" => {
-                match values.as_slice() {
-                    &[ref pattern, ref lhs, ref rhs] => {
+                match *values.as_slice() {
+                    [ref pattern, ref lhs, ref rhs] => {
                         if eval(pattern, env)? == Expr::Bool(true) {
                             eval(lhs, env)
                         }
@@ -102,24 +102,24 @@ pub fn eval<'a, 'b>(exprs: &'b Vec<Expr>) -> Result<(Expr, Env), &'a str> {
                     "-" | "sub" => i64_calc(|a, b| a - b, &vals),
                     "/" | "div" => i64_calc(|a, b| a / b, &vals),
                     "*" | "mul" => i64_calc(|a, b| a * b, &vals),
-                    "list" => Ok(Expr::QuotedList(Box::new(vals))),
+                    "list" => Ok(Expr::QuotedList(vals)),
                     "append" => {
-                        match vals.as_slice(){
-                            &[ref v, Expr::QuotedList(ref xs)] =>
+                        match *vals.as_slice(){
+                            [ref v, Expr::QuotedList(ref xs)] =>
                                 {
                                     let mut xs = xs.clone();
                                     xs.insert(0, v.clone());
                                     Ok(Expr::QuotedList(xs))
                                 },
-                            &[ref lhs, ref rhs] =>
+                            [ref lhs, ref rhs] =>
                                 {
-                                    Ok(Expr::QuotedList(Box::new(vec!(lhs.clone(), rhs.clone()))))
+                                    Ok(Expr::QuotedList(vec!(lhs.clone(), rhs.clone())))
                                 },
                             _ => Err("unsupported params for append")
                         }
                     },
                     "eq?" => {
-                        if vals.len() == 0 {
+                        if vals.is_empty() {
                             Ok(Expr::Bool(true))
                         }
                         else{
@@ -168,7 +168,7 @@ pub fn eval<'a, 'b>(exprs: &'b Vec<Expr>) -> Result<(Expr, Env), &'a str> {
                         for i in vals {
                             atoms.push(i);
                         }
-                        Ok(Expr::QuotedList(Box::new(atoms)))
+                        Ok(Expr::QuotedList(atoms))
                     }
                 }
             }
@@ -181,20 +181,20 @@ pub fn eval<'a, 'b>(exprs: &'b Vec<Expr>) -> Result<(Expr, Env), &'a str> {
 
 #[test]
 fn eval_test() {
-    fn s<'a>(txt: &'a str) -> Result<Expr, &'a str> {
+    fn s(txt: &str) -> Result<Expr, &str> {
         parse(&txt.chars().collect::<Vec<char>>())
             .map(|x| eval(&x.res).map(|(x,_)| x))
             .unwrap()
     }
     assert_eq!(s("(+ (* 2 2) 2 3 )"), Ok(Expr::Int(9)));
     assert_eq!(s("(list (list 5 6) 7)"), Ok(Expr::QuotedList(
-            Box::new(vec!(Expr::QuotedList(
-                Box::new(vec!(Expr::Int(5), Expr::Int(6)))), Expr::Int(7))))));
+            vec!(Expr::QuotedList(
+                vec!(Expr::Int(5), Expr::Int(6))), Expr::Int(7)))));
     assert_eq!(s("(quote (+ 1 2))"), Ok(Expr::QuotedList(
-            Box::new(vec!(Expr::Ident(String::from("+")), Expr::Int(1), Expr::Int(2))))));
+            vec!(Expr::Ident(String::from("+")), Expr::Int(1), Expr::Int(2)))));
     assert_eq!(s("(define x 1)"), Ok(Expr::Unit));
     assert_eq!(s("(append 1 (quote (+ 3))))"), Ok(Expr::QuotedList(
-        Box::new(vec!(Expr::Int(1), Expr::Ident(String::from("+")), Expr::Int(3))))));
+        vec!(Expr::Int(1), Expr::Ident(String::from("+")), Expr::Int(3)))));
     assert_eq!(s("(if (eq? 1 1) 5 (6 7))"), Ok(Expr::Int(5)));
     assert_eq!(s("(if (eq? 1 2) 5 \"abc\")"), Ok(Expr::Str(String::from("abc"))));
     assert_eq!(s("(eq? 1 1 1)"), Ok(Expr::Bool(true)));

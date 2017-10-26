@@ -1,7 +1,7 @@
 use parser_combinators::*;
 use expr::Expr;
 
-pub fn parse<'a>(txt: &'a [char]) -> ParseResult<Vec<Expr>> {
+pub fn parse(txt: &[char]) -> ParseResult<Vec<Expr>> {
     let quote_mark = p_char('"');
     let expr = refl_parser(|expr| {
         let expr_impl = vec![
@@ -16,12 +16,12 @@ pub fn parse<'a>(txt: &'a [char]) -> ParseResult<Vec<Expr>> {
             p_char('(')
                 .right(spaces().right(p_string().left(spaces())))
                 .both(all(spaces().right(expr).left(spaces())))
-                .map(|(hd, tl)| Expr::List(hd, Box::new(tl)))
+                .map(|(hd, tl)| Expr::List(hd, tl))
                 .left(p_char(')')),
 
             p_char('(')
                 .right(spaces().right(p_string().left(spaces())))
-                .map(|hd| Expr::List(hd, Box::new(Vec::new())))
+                .map(|hd| Expr::List(hd, Vec::new()))
                 .left(p_char(')')),
         ];
 

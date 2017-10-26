@@ -23,7 +23,7 @@ pub fn p_char<'a>(ch: char) -> RcParser<'a, char> {
     })
 }
 
-pub fn p_str<'a>(string: &'a str) -> RcParser<'a, &'a str> {
+pub fn p_str<'a>(string: &'a str) -> RcParser<'a, &str> {
     let s: Vec<char> = string.chars().collect();
     LambdaParser::create(move |txt| if txt.starts_with(&s) {
         let corr = Corr {
@@ -169,13 +169,14 @@ where
     Ret: 'a,
 {
     let x: Rc<_> = Rc::new(RefCell::new(None));
-    let expr = scope(x.clone());
+    let c = Rc::clone(&x);
+    let expr = scope(c);
     *x.as_ref().borrow_mut() = Some(expr);
     x
 }
 
 pub fn p_string<'a>() -> RcParser<'a, String> {
-    let chars = (('*' as u8)..('z' as u8) + 1)
+    let chars = ((b'*')..(b'z') + 1)
         .map(|x| p_char(x as char).as_rc())
         .collect::<Vec<_>>();
 
@@ -183,7 +184,7 @@ pub fn p_string<'a>() -> RcParser<'a, String> {
 }
 
 pub fn p_int<'a>() -> RcParser<'a, i64> {
-    let chars = (('0' as u8)..('9' as u8) + 1)
+    let chars = ((b'0')..(b'9') + 1)
         .map(|x| p_char(x as char).as_rc())
         .collect::<Vec<_>>();
 
