@@ -28,7 +28,7 @@ fn main() {
       (f from)
       (append  (f from) (downto (sub1 from) f))))
 
-(downto 20 fib)")));
+(downto 7 fib)")));
 }
 
 
