@@ -153,7 +153,7 @@ where
         if let Some(ref p) = *x {
             p.parse(txt)
         } else {
-            panic!("implementation was not set");
+            unreachable!()
         }
     }
 
