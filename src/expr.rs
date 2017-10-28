@@ -3,7 +3,7 @@ use std::fmt;
 type Ident = String;
 type ArgName = Ident;
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Hash, Eq)]
 pub enum Expr {
     Int(i64),
     Str(String),
@@ -15,8 +15,6 @@ pub enum Expr {
     QuotedList(Vec<Expr>),
     Fun(Vec<ArgName>, Box<Expr>),
 }
-
-
 
 impl fmt::Display for Expr {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {

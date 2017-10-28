@@ -4,11 +4,13 @@ use parser::parse;
 
 type Name = String;
 type Env = HashMap<Name, Expr>;
+type ArgValue = Expr;
+type Memoized = HashMap<(Name, Vec<ArgValue>), Expr>;
 
 //fix signature to use &str
 pub fn eval<'a, 'b>(exprs: &'b [Expr]) -> Result<(Expr, Env), &'a str> {
 
-    fn eval<'a, 'b>(expr: &'b Expr, env: &mut Env) -> Result<Expr, &'a str> {
+    fn eval<'a, 'b>(expr: &'b Expr, env: &mut Env, memoized:&mut Memoized) -> Result<Expr, &'a str> {
         match *expr {
             Expr::Symbol(_) | Expr::Fun(_,_) | Expr::QuotedList(_) | Expr::Bool(_) | Expr::Unit | Expr::Int(_) | Expr::Str(_) => Ok(expr.clone()),
             Expr::Ident(ref val) => {
@@ -24,7 +26,7 @@ pub fn eval<'a, 'b>(exprs: &'b [Expr]) -> Result<(Expr, Env), &'a str> {
                 match *values.as_slice() {
                     [] => Err("cannot define <empty> of value <empty>"),
                     [Expr::Ident(ref name), ref val] => {
-                        let definition = eval(val, env)?;
+                        let definition = eval(val, env, memoized)?;
                         env.insert(name.to_owned(), definition);
                         Ok(Expr::Unit)
                     }
@@ -62,11 +64,11 @@ pub fn eval<'a, 'b>(exprs: &'b [Expr]) -> Result<(Expr, Env), &'a str> {
             Expr::List(ref name, ref values) if name == "if" => {
                 match *values.as_slice() {
                     [ref pattern, ref lhs, ref rhs] => {
-                        if eval(pattern, env)? == Expr::Bool(true) {
-                            eval(lhs, env)
+                        if eval(pattern, env, memoized)? == Expr::Bool(true) {
+                            eval(lhs, env, memoized)
                         }
                         else{
-                            eval(rhs, env)
+                            eval(rhs, env, memoized)
                         }
                     }
                     _ => Err("wrongly defined if"),
@@ -75,7 +77,7 @@ pub fn eval<'a, 'b>(exprs: &'b [Expr]) -> Result<(Expr, Env), &'a str> {
             Expr::List(ref name, ref values) => {
                 let vals = values
                     .iter()
-                    .map(|v| eval(v, env))
+                    .map(|v| eval(v, env, memoized))
                     .collect::<Result<Vec<_>, _>>()?;
 
                 fn i64_calc<'a, F>(f: F, vals: &[Expr]) -> Result<Expr, &'a str>
@@ -151,13 +153,21 @@ pub fn eval<'a, 'b>(exprs: &'b [Expr]) -> Result<(Expr, Env), &'a str> {
                         let val = env[name].clone();
                         match val {
                             Expr::Fun(ref names, ref expr) if names.len() == vals.len() => {
-                                let mut env = env.clone();
-
-                                for (n, val) in names.iter().zip(vals) {                     
-                                    env.insert(n.to_owned(), val);
+                                let key = (name.to_owned(), vals.clone());
+                                if let Some(val2) = memoized.clone().get(&key) {
+                                    Ok(val2.clone())
                                 }
+                                else{
+                                    let mut env = env.clone();
 
-                                eval(&expr.clone(), &mut env)
+                                    for (n, val) in names.iter().zip(vals) {                     
+                                        env.insert(n.to_owned(), val);
+                                    }
+                                    
+                                    let x = eval(&expr.clone(), &mut env, memoized)?;
+                                    let _ = memoized.entry(key).or_insert(x.clone());
+                                    Ok(x)
+                                }
                             },
                             _ => Ok(val)
                         }
@@ -175,7 +185,8 @@ pub fn eval<'a, 'b>(exprs: &'b [Expr]) -> Result<(Expr, Env), &'a str> {
         }
     }
     let mut env = HashMap::new();
-    exprs.iter().fold(Ok(Expr::Unit), |_, expr| eval(expr, &mut env)).map(|x| (x, env))
+    let mut memoized = HashMap::new();
+    exprs.iter().fold(Ok(Expr::Unit), |_, expr| eval(expr, &mut env, &mut memoized)).map(|x| (x, env))
     
 }
 
